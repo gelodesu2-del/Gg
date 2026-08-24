@@ -21,8 +21,10 @@ let trip = null;
 let movingSince = 0;
 let stoppedSince = 0;
 let lastPoint = null;
+let sinceStored = 0;
 
 export function tick(now, dt = 0) {
+  if (joltDirty && now - joltFlushAt > 15000) { joltFlushAt = now; flushJolts(); }
   const fix = S.lat === null ? null : { lat: S.lat, lng: S.lng };
 
   if (!trip) {
@@ -35,12 +37,20 @@ export function tick(now, dt = 0) {
     return;
   }
 
-  // distance and shape
+  // distance and shape. lastPoint must advance every time distance is
+  // added — the old code only advanced it when a polyline point was stored,
+  // so the same growing gap was re-added on every tick between GPS fixes,
+  // over-counting distance five to ten times.
   if (fix && lastPoint) {
     const d = haversine(lastPoint, fix);
     if (d > 2 && d < 200) {                  // 200 m in one tick is a GPS jump
       trip.m += d;
-      if (d > POINT_M) { trip.pts.push([+fix.lat.toFixed(5), +fix.lng.toFixed(5)]); lastPoint = fix; }
+      lastPoint = fix;
+      sinceStored += d;
+      if (sinceStored >= POINT_M) {
+        trip.pts.push([+fix.lat.toFixed(5), +fix.lng.toFixed(5)]);
+        sinceStored = 0;
+      }
     }
   } else if (fix) {
     lastPoint = fix;
@@ -66,6 +76,7 @@ function open(fix) {
     pts: [[+fix.lat.toFixed(5), +fix.lng.toFixed(5)]]
   };
   lastPoint = fix;
+  sinceStored = 0;
   stoppedSince = 0;
   S.tripId = trip.id;
 }
@@ -78,6 +89,7 @@ export function close() {
   movingSince = 0;
   stoppedSince = 0;
   lastPoint = null;
+  sinceStored = 0;
 
   if (t.m < 300) return null;               // too short to be a ride
   if (t.pts.length) t.to = cellKey({ lat: t.pts[t.pts.length - 1][0], lng: t.pts[t.pts.length - 1][1] });
@@ -89,9 +101,31 @@ export function close() {
   return t;
 }
 
+/* The jolt log lives in memory and is persisted lazily. Writing it through
+   store.push meant re-serialising up to 2000 entries on every pothole — a
+   ~100 KB stringify every 400 ms on a rough road — and reading it back from
+   localStorage on the render path every 2.5 s. */
+let joltCache = null;
+let joltDirty = false;
+let joltFlushAt = 0;
+let roughCache = null;
+
+function joltList() {
+  if (!joltCache) joltCache = store.get("jolts", []);
+  return joltCache;
+}
+
 export function noteJolt(hit) {
   if (trip) trip.jolts++;
-  store.push("jolts", hit, 2000);
+  const list = joltList();
+  list.unshift(hit);
+  if (list.length > 2000) list.length = 2000;
+  joltDirty = true;
+  roughCache = null;
+}
+
+export function flushJolts() {
+  if (joltDirty) { store.set("jolts", joltCache); joltDirty = false; }
 }
 
 export function current() { return trip; }
@@ -101,7 +135,7 @@ function cellKey(p) {
 }
 
 export function trips() { return store.get("trips", []); }
-export function jolts() { return store.get("jolts", []); }
+export function jolts() { return joltList(); }
 
 export function odometer() {
   return trips().reduce((s, t) => s + (t.km || 0), 0);
@@ -138,6 +172,7 @@ export function routes(minRides = 2) {
 /* Cluster logged hits so a single bad stretch reads as one entry rather than
    forty. Grid resolution is deliberately coarse — roughly a block. */
 export function roughSpots(limit = 6) {
+  if (roughCache && roughCache.limit === limit) return roughCache.spots;
   const grid = new Map();
   for (const j of jolts()) {
     if (j.lat == null) continue;
@@ -146,7 +181,9 @@ export function roughSpots(limit = 6) {
     g.n++;
     grid.set(k, g);
   }
-  return [...grid.values()].sort((a, b) => b.n - a.n).slice(0, limit);
+  const spots = [...grid.values()].sort((a, b) => b.n - a.n).slice(0, limit);
+  roughCache = { limit, spots };
+  return spots;
 }
 
 /* Distance in metres to the nearest logged hit ahead, or null. Used for the

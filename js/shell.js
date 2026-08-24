@@ -221,10 +221,11 @@ export function init() {
 
   // ---- setup ----
   $("grant-btn").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;          // null after the await resolves
     const gps = sensors.startGPS();
     const mot = await sensors.startMotion();
-    e.currentTarget.textContent = gps && mot ? "Granted" : gps ? "GPS only" : "Denied";
-    e.currentTarget.classList.toggle("ok", gps && mot);
+    btn.textContent = gps && mot ? "Granted" : gps ? "GPS only" : "Denied";
+    btn.classList.toggle("ok", gps && mot);
   });
   $("setup-done").addEventListener("click", () => {
     save({
@@ -234,6 +235,10 @@ export function init() {
       setupDone: true
     });
     layer("");
+    // Grant is skippable, so Start must also start the sensors — both are
+    // idempotent, so tapping Grant first costs nothing.
+    sensors.startGPS();
+    sensors.startMotion();
     mapview.load();
     wake(settings.wakeLock);
     toast("Ready");
@@ -317,6 +322,7 @@ export function init() {
     layer("");
     S.crashArmed = false;
     S.crashReady = false;
+    S.crashCancel = true;           // tells the watcher to drop its timers too
     $("layer-crash").dataset.phase = "count";
   });
   // The automatic attempt can be refused for want of user activation, so the
@@ -481,7 +487,11 @@ function renderContacts() {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // The apostrophe matters: place names go into single-quoted attributes, so
+  // "McDonald's" was terminating the attribute early — breaking the tap on
+  // any such result, and opening an injection route through crafted labels.
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
 function syncSetup() {

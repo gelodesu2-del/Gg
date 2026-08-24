@@ -87,9 +87,10 @@ public class MainActivity extends Activity {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin,
                                                            GeolocationPermissions.Callback cb) {
-                // The only page loaded here is the dash, and Android has
-                // already gated this behind the runtime permission below.
-                cb.invoke(origin, true, false);
+                // Only the dash gets the rider's position. Any other origin
+                // that finds its way into this WebView is refused.
+                boolean ours = origin != null && origin.startsWith("https://" + SITE);
+                cb.invoke(origin, ours, false);
             }
         });
 
@@ -110,7 +111,12 @@ public class MainActivity extends Activity {
     private boolean route(String url) {
         if (url == null) return false;
         boolean http = url.startsWith("http://") || url.startsWith("https://");
-        if (http && (url.contains(SITE) || url.contains("accounts.spotify.com"))) {
+        // Compare the actual host — a substring match would let
+        // evil.example/nmaxdash.gelodesu2.workers.dev stay inside the shell.
+        String host = "";
+        try { host = Uri.parse(url).getHost(); } catch (Exception e) { /* leave empty */ }
+        if (host == null) host = "";
+        if (http && (host.equals(SITE) || host.equals("accounts.spotify.com"))) {
             return false;                       // the dash, or a login on its way back
         }
         try {

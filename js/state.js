@@ -23,6 +23,7 @@ export const S = {
   lean: 0, leanRaw: 0, maxL: 0, maxR: 0, accel: 0,
   rpm: null, fuel: null, temp: null, volts: null,
   moving: false, tripId: null,
+  impactAt: 0, crashCancel: false,
   spotify: null,
   nearJolt: null
 };

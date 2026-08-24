@@ -77,7 +77,15 @@ async function exchange(body) {
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams(body)
     });
-    if (!res.ok) return false;
+    if (!res.ok) {
+      // A definitive rejection of a refresh token means it is gone for good —
+      // retrying it every five seconds forever just burns radio. Reconnecting
+      // is a one-tap affair.
+      if (body.grant_type === "refresh_token" && (res.status === 400 || res.status === 401)) {
+        store.del("sp.token");
+      }
+      return false;
+    }
     const j = await res.json();
     store.set("sp.token", {
       access: j.access_token,
@@ -120,15 +128,18 @@ async function call(path, method = "GET") {
     });
     if (res.status === 204) return { empty: true };
     if (res.status === 403) return { forbidden: true };   // almost always "not Premium"
-    if (!res.ok) return null;
+    if (!res.ok) return { err: true };
     return await res.json();
   } catch (e) {
-    return null;
+    return { err: true };                                 // dead spot, not "nothing playing"
   }
 }
 
 export async function poll() {
   const j = await call("/me/player/currently-playing");
+  // A network failure keeps the last known state on screen — riding through a
+  // dead spot should not flash "Nothing playing" while the music carries on.
+  if (j && j.err) return;
   if (!j || j.empty || !j.item) { S.spotify = connected() ? { idle: true } : null; return; }
   const art = (j.item.album && j.item.album.images || []).slice(-2)[0];
   S.spotify = {

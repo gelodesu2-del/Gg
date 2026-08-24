@@ -22,7 +22,11 @@ function fail(msg) {
 }
 
 export function load() {
-  if (map || document.getElementById("maplibre-js")) return true;
+  if (map) return true;
+  // destroy() nulls the map but the library stays loaded — re-init directly,
+  // or the provider switch back from Google shows "Loading map…" forever.
+  if (window.maplibregl) { init(); return true; }
+  if (document.getElementById("maplibre-js")) return true;   // script still fetching
 
   const css = document.createElement("link");
   css.rel = "stylesheet";

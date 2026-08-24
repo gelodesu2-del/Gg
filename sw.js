@@ -8,7 +8,7 @@
    Maps traffic must reach the network untouched — a cached playback state or a
    stale map tile is worse than no answer at all. */
 
-const CACHE = "nmax-v10";
+const CACHE = "nmax-v11";
 const FONT_HOSTS = ["https://fonts.googleapis.com", "https://fonts.gstatic.com"];
 
 const SHELL = [
@@ -20,11 +20,21 @@ const SHELL = [
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-512.png"
 ];
 
+/* Everything the app cannot boot without. If any of these failed to cache,
+   activating would delete the old good cache and leave an index.html whose
+   module imports 404 offline — a blank dash until signal returns. Icons and
+   fonts may fail without consequence; these may not. */
+const CORE = SHELL.filter((u) => u.endsWith(".js") || u.endsWith(".css") || u.endsWith("index.html") || u === "./");
+
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE)
-      // One bad entry should not fail the whole install and leave no worker.
-      .then((c) => Promise.allSettled(SHELL.map((u) => c.add(u))))
+      .then(async (c) => {
+        await Promise.allSettled(SHELL.map((u) => c.add(u)));
+        for (const u of CORE) {
+          if (!(await c.match(u))) throw new Error("core asset failed to cache: " + u);
+        }
+      })
       .then(() => self.skipWaiting())
   );
 });
@@ -55,9 +65,18 @@ self.addEventListener("fetch", (e) => {
   if (!sameOrigin && !isFont) return;              // API traffic passes straight through
 
   // Navigations go to the network first so the Spotify redirect, which comes
-  // back as ?code=…, is never answered from cache.
+  // back as ?code=…, is never answered from cache — but a launch must not
+  // hang on a weak link either. The cached shell wins after three seconds,
+  // and location.search survives it, so the OAuth exchange still runs.
   if (req.mode === "navigate") {
-    e.respondWith(fetch(req).catch(() => caches.match("./index.html")));
+    e.respondWith((async () => {
+      const net = fetch(req).catch(() => null);
+      const first = await Promise.race([net, new Promise((r) => setTimeout(() => r("timeout"), 3000))]);
+      if (first && first !== "timeout") return first;
+      const hit = await caches.match("./index.html");
+      if (hit) return hit;
+      return (await net) || Response.error();
+    })());
     return;
   }
 

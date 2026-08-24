@@ -12,6 +12,7 @@ import { CFG, S, settings } from "./state.js";
 
 const G = 9.81;
 let gyroLean = 0;
+let decelEMA = 0;
 let joltBase = 0;
 let lastJolt = 0;
 let lastMotion = 0;
@@ -21,9 +22,13 @@ export function setJoltHandler(fn) { onJolt = fn; }
 
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
+let gpsWatchId = null;
+let motionOn = false;
+
 export function startGPS() {
   if (!("geolocation" in navigator)) return false;
-  navigator.geolocation.watchPosition(
+  if (gpsWatchId !== null) return true;      // already watching
+  gpsWatchId = navigator.geolocation.watchPosition(
     (p) => {
       const c = p.coords;
       if (typeof c.speed === "number" && c.speed >= 0) S.speed = c.speed * 3.6;
@@ -75,8 +80,18 @@ function motion(e) {
   if (S.lean > 0) S.maxR = Math.max(S.maxR, S.lean);
 
   // --- longitudinal acceleration, for crash detection ---
+  // Evaluated here at full sensor rate rather than in the 12 Hz UI poll: a
+  // real impact spike can be far shorter than 80 ms and would fall between
+  // polls. Two signatures qualify as an impact. A sustained hard deceleration
+  // uses a ~250 ms EMA, so one pothole sample cannot set it the way a single
+  // instantaneous reading used to. A violent jolt at speed catches the hit
+  // itself, at a level far above what braking or potholes produce.
   const lin = e.acceleration;
-  if (lin && typeof lin.z === "number") S.accel = -(lin.z || 0) / G;
+  if (lin && typeof lin.z === "number") {
+    S.accel = -(lin.z || 0) / G;
+    decelEMA += (S.accel - decelEMA) * (1 - Math.exp(-dt / 0.25));
+    if (decelEMA < -0.72) S.impactAt = now;
+  }
 
   // --- jolts ---
   // Slow baseline removes the steady 1g and any mount angle, leaving the
@@ -84,6 +99,7 @@ function motion(e) {
   const dev = mag - G;
   joltBase += (dev - joltBase) * 0.02;
   const spike = Math.abs(dev - joltBase);
+  if (spike > 22 && S.speed > 15) S.impactAt = now;
   if (
     spike > CFG.joltThreshold &&
     S.speed > CFG.joltMinSpeed &&
@@ -98,6 +114,7 @@ function motion(e) {
 export async function startMotion() {
   const DME = window.DeviceMotionEvent;
   if (!DME) return false;
+  if (motionOn) return true;
   // iOS gates this behind a user gesture. Android does not, but asking costs
   // nothing when the method is absent.
   if (typeof DME.requestPermission === "function") {
@@ -109,6 +126,7 @@ export async function startMotion() {
     }
   }
   window.addEventListener("devicemotion", motion, { passive: true });
+  motionOn = true;
   return true;
 }
 
