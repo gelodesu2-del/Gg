@@ -106,6 +106,9 @@ export function init() {
   $("inv-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "invertLean"));
   $("crash-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "crashDetect"));
   $("wake-sw").addEventListener("click", (e) => { const on = togSwitch(e.currentTarget, "wakeLock"); wake(on); });
+  $("fx-sw").addEventListener("click", (e) => {
+    $("app").dataset.fx = togSwitch(e.currentTarget, "effects") ? "on" : "off";
+  });
   $("lim-in").addEventListener("change", (e) => save({ speedLimit: Math.max(20, Math.min(140, +e.target.value || 60)) }));
   $("keys-btn").addEventListener("click", () => { layer("setup"); syncSetup(); });
 
@@ -201,6 +204,7 @@ export function init() {
     if (document.visibilityState === "visible" && settings.wakeLock) wake(true);
   });
 
+  $("app").dataset.fx = settings.effects ? "on" : "off";
   setTheme(settings.theme);
   goto(0);
 }
@@ -217,6 +221,7 @@ function syncSettings() {
   $("inv-sw").classList.toggle("on", settings.invertLean);
   $("crash-sw").classList.toggle("on", settings.crashDetect);
   $("wake-sw").classList.toggle("on", settings.wakeLock);
+  $("fx-sw").classList.toggle("on", settings.effects);
   $("lim-in").value = settings.speedLimit;
   $("ice-tpl").value = sos.template();
   $("ice-pick").hidden = !sos.pickerSupported();

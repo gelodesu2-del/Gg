@@ -64,10 +64,20 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
   position:absolute; inset:0; display:grid; grid-template-rows:4em 1fr;
   background:var(--ground); color:var(--ink);
 }
+/* These two sit above everything that changes, so without their own
+   compositor layer the browser re-rasterises a full-screen gradient on every
+   repaint underneath — measured at about a third of the frame budget.
+   will-change promotes them once and they are never painted again. */
 .scanlines{position:absolute; inset:0; z-index:6; pointer-events:none;
+  will-change:transform; contain:strict;
   background:repeating-linear-gradient(0deg, rgba(0,0,0,.20) 0 1px, transparent 1px 3px)}
 .vignette{position:absolute; inset:0; z-index:5; pointer-events:none;
+  will-change:transform; contain:strict;
   background:radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%)}
+#app[data-fx="off"] .scanlines,
+#app[data-fx="off"] .vignette{display:none}
+#app[data-fx="off"] .speed{text-shadow:none}
+#app[data-fx="off"] .cell .v{text-shadow:none}
 
 .shift{display:flex; gap:.3em; padding:1.15em 1.5em .75em; align-items:stretch}
 .seg{flex:1; background:var(--off); box-shadow:inset 0 0 0 1px rgba(var(--neon-rgb),.06)}
@@ -79,7 +89,7 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .speed{
   font-family:var(--f-num); font-weight:800; font-size:10.9em; line-height:.86;
   letter-spacing:-.01em; color:#EAFFF2;
-  text-shadow:-.016em 0 rgba(var(--gold-rgb),.55), .016em 0 rgba(var(--neon-rgb),.55), 0 0 .3em rgba(var(--neon-rgb),.3);
+  text-shadow:-.016em 0 rgba(var(--gold-rgb),.6), .016em 0 rgba(var(--neon-rgb),.6);
 }
 .speed-lbl{font-size:1.3em; letter-spacing:.32em; color:var(--ink-3); margin-top:.5em; text-transform:uppercase}
 .slim{flex:none; display:flex; flex-direction:column; align-items:center; line-height:1; opacity:0; transition:opacity .3s; pointer-events:none; padding-right:.2em}

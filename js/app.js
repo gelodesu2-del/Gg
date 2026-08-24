@@ -57,15 +57,28 @@ function crashWatch(now) {
   }
 }
 
-function frame(now) {
-  dash.render(now);
-  gmap.update(now);
-  trips.tick(now);
-  crashWatch(now);
+/* Two cadences. Lean and the map rotor track continuously because the eye
+   follows them; everything else is read rather than watched, and updating it
+   sixty times a second was most of the frame budget for no visible gain. */
+const SLOW_MS = 80;
+let lastSlow = 0, lastFrame = 0;
 
-  if (spotify.connected() && now - lastPoll > 5000) {
-    lastPoll = now;
-    spotify.poll().then(dash.renderSpotify);
+function frame(now) {
+  const dt = lastFrame ? Math.min((now - lastFrame) / 1000, 0.25) : 0;
+  lastFrame = now;
+
+  dash.renderFast();
+  gmap.update(now);
+
+  if (now - lastSlow >= SLOW_MS) {
+    lastSlow = now;
+    dash.renderSlow(now);
+    trips.tick(now, dt);
+    crashWatch(now);
+    if (spotify.connected() && now - lastPoll > 5000) {
+      lastPoll = now;
+      spotify.poll().then(dash.renderSpotify);
+    }
   }
   requestAnimationFrame(frame);
 }

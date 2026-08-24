@@ -22,7 +22,7 @@ let movingSince = 0;
 let stoppedSince = 0;
 let lastPoint = null;
 
-export function tick(now) {
+export function tick(now, dt = 0) {
   const fix = S.lat === null ? null : { lat: S.lat, lng: S.lng };
 
   if (!trip) {
@@ -48,7 +48,7 @@ export function tick(now) {
 
   trip.maxSpeed = Math.max(trip.maxSpeed, S.speed);
   trip.maxLean = Math.max(trip.maxLean, Math.abs(S.lean));
-  if (S.speed > 1) trip.movingMs += 1000 / 60;
+  if (S.speed > 1) trip.movingMs += dt * 1000;
 
   if (S.speed < STOP_SPEED) {
     if (!stoppedSince) stoppedSince = now;

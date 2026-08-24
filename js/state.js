@@ -31,6 +31,7 @@ const defaults = {
   theme: "emerald",
   invertLean: false,
   wakeLock: true,
+  effects: true,
   crashDetect: true,
   contacts: [],
   alertChannel: "sms",

@@ -13,6 +13,22 @@ let TH = {};
 let roughAt = 0;
 let rough = null;
 
+/* Every write below used to happen 60 times a second whether or not the value
+   had changed. Profiling on a throttled CPU put that at roughly a third of the
+   frame budget, so each one is now gated on the value actually moving. */
+const memo = Object.create(null);
+function write(el, prop, val, key) {
+  if (memo[key] === val) return;
+  memo[key] = val;
+  el[prop] = val;
+}
+function attr(el, name, val, key) {
+  if (memo[key] === val) return;
+  memo[key] = val;
+  el.setAttribute(name, val);
+}
+let segCache = [], pipCache = [];
+
 export function readTheme() {
   const cs = getComputedStyle(document.getElementById("app"));
   const g = (n) => cs.getPropertyValue(n).trim();
@@ -24,6 +40,9 @@ export function readTheme() {
     off: g("--off") || "#12151B",
     glow: (a) => "rgba(" + g("--neon-rgb") + "," + a + ")"
   };
+  segCache = [];
+  pipCache = [];
+  for (const k in memo) delete memo[k];
   return TH;
 }
 
@@ -79,57 +98,89 @@ export function build() {
     t += `<line x1="${a1.toFixed(1)}" y1="${b1.toFixed(1)}" x2="${a2.toFixed(1)}" y2="${b2.toFixed(1)}"/>`;
   });
   $("lean-ticks").innerHTML = t;
+
+  // Rebuilding these through innerHTML every frame cost about 25% of the
+  // budget on its own. Two nodes, moved by attribute instead.
+  $("peaks").innerHTML =
+    '<circle class="pk" id="pk-l" r="2.8" opacity="0"/><circle class="pk" id="pk-r" r="2.8" opacity="0"/>';
+  segCache = [];
+  pipCache = [];
 }
 
-export function render(now) {
-  // ---- speed ----
-  setNum($("speed"), S.gpsOk ? Math.round(S.speed) : "––");
-  $("lock").textContent = !S.gpsOk ? "…" : (now - S.lastFix > 6000 ? "LOST" : "LOCK");
-  $("hdg").textContent = S.gpsOk ? String(Math.round(S.heading)).padStart(3, "0") + "°" : "—";
-
-  // ---- speed limit, soft ----
-  $("slim").classList.toggle("on", S.gpsOk && S.speed > settings.speedLimit + 2);
-  $("slim-n").textContent = settings.speedLimit;
-
-  // ---- lean ----
+/* Runs every frame: only what the eye tracks continuously. */
+export function renderFast() {
   const a = clamp(S.lean, -LEAN.max, LEAN.max);
   const [px0, py0] = lpt(0, LEAN.r), [px1, py1] = lpt(a, LEAN.r);
   const d = Math.abs(a) < 0.4 ? ""
     : `M${px0.toFixed(2)} ${py0.toFixed(2)}A${LEAN.r} ${LEAN.r} 0 0 ${a > 0 ? 1 : 0} ${px1.toFixed(2)} ${py1.toFixed(2)}`;
+  attr($("lean-arc"), "d", d, "arcd");
+  attr($("lean-glow"), "d", d, "glowd");
+  attr($("lean-mark"), "transform", `rotate(${a.toFixed(1)} ${LEAN.cx} ${LEAN.cy})`, "mark");
+
   const hot = Math.abs(a) > 40;
-  $("lean-arc").setAttribute("d", d);
-  $("lean-glow").setAttribute("d", d);
-  $("lean-arc").setAttribute("stroke", hot ? TH.gold : TH.neon);
-  $("lean-glow").setAttribute("stroke", hot ? "rgba(255,184,51,.26)" : TH.glow(".26"));
-  $("lean-mark").setAttribute("transform", `rotate(${a.toFixed(2)} ${LEAN.cx} ${LEAN.cy})`);
-  $("lean-val").textContent = String(Math.abs(Math.round(a))).padStart(2, "0") + "°";
-  $("lean-side").textContent = a < -2 ? "LEFT" : a > 2 ? "RIGHT" : "UPRIGHT";
+  attr($("lean-arc"), "stroke", hot ? TH.gold : TH.neon, "arcc");
+  attr($("lean-glow"), "stroke", hot ? "rgba(255,184,51,.26)" : TH.glow(".26"), "glowc");
+  write($("lean-val"), "textContent", String(Math.abs(Math.round(a))).padStart(2, "0") + "°", "lv");
+  write($("lean-side"), "textContent", a < -2 ? "LEFT" : a > 2 ? "RIGHT" : "UPRIGHT", "ls");
+}
 
-  let pk = "";
-  if (S.maxL > 3) { const [x, y] = lpt(-Math.min(S.maxL, LEAN.max), LEAN.r); pk += `<circle class="pk" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.8" opacity=".55"/>`; }
-  if (S.maxR > 3) { const [x, y] = lpt(Math.min(S.maxR, LEAN.max), LEAN.r); pk += `<circle class="pk" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.8" opacity=".55"/>`; }
-  $("peaks").innerHTML = pk;
-  $("peak-l").textContent = "L " + String(Math.round(S.maxL)).padStart(2, "0");
-  $("peak-r").textContent = "R " + String(Math.round(S.maxR)).padStart(2, "0");
+/* Runs a dozen times a second: everything a rider reads rather than watches. */
+export function renderSlow(now) {
+  setNum($("speed"), S.gpsOk ? Math.round(S.speed) : "––");
+  write($("lock"), "textContent", !S.gpsOk ? "…" : (now - S.lastFix > 6000 ? "LOST" : "LOCK"), "lock");
+  write($("hdg"), "textContent", S.gpsOk ? String(Math.round(S.heading)).padStart(3, "0") + "°" : "—", "hdg");
 
-  // ---- engine data, absent until a dongle answers ----
-  const segs = $("shift").children;
+  const over = S.gpsOk && S.speed > settings.speedLimit + 2;
+  if (memo.slim !== over) { memo.slim = over; $("slim").classList.toggle("on", over); }
+  write($("slim-n"), "textContent", settings.speedLimit, "slimn");
+
+  // peak hold
+  const L = S.maxL > 3 ? Math.min(S.maxL, LEAN.max) : null;
+  const R = S.maxR > 3 ? Math.min(S.maxR, LEAN.max) : null;
+  if (memo.pkl !== L) {
+    memo.pkl = L;
+    const e = $("pk-l");
+    if (L === null) e.setAttribute("opacity", "0");
+    else { const [x, y] = lpt(-L, LEAN.r); e.setAttribute("cx", x.toFixed(1)); e.setAttribute("cy", y.toFixed(1)); e.setAttribute("opacity", ".55"); }
+  }
+  if (memo.pkr !== R) {
+    memo.pkr = R;
+    const e = $("pk-r");
+    if (R === null) e.setAttribute("opacity", "0");
+    else { const [x, y] = lpt(R, LEAN.r); e.setAttribute("cx", x.toFixed(1)); e.setAttribute("cy", y.toFixed(1)); e.setAttribute("opacity", ".55"); }
+  }
+  write($("peak-l"), "textContent", "L " + String(Math.round(S.maxL)).padStart(2, "0"), "pl");
+  write($("peak-r"), "textContent", "R " + String(Math.round(S.maxR)).padStart(2, "0"), "pr");
+
+  // engine data, absent until a dongle answers. Written once, not every frame.
   if (S.rpm === null) {
-    for (const el of segs) { el.style.background = TH.off; }
+    const segs = $("shift").children;
+    for (let i = 0; i < segs.length; i++) {
+      if (segCache[i] === TH.off) continue;
+      segCache[i] = TH.off;
+      segs[i].style.background = TH.off;
+      segs[i].style.boxShadow = "none";
+    }
+    const pips = $("pips").children;
+    for (let i = 0; i < pips.length; i++) {
+      if (pipCache[i] === TH.off) continue;
+      pipCache[i] = TH.off;
+      pips[i].style.background = TH.off;
+      pips[i].style.boxShadow = "none";
+    }
     setNum($("rpm"), "—");
     setNum($("fuel-v"), "—");
-    for (const el of $("pips").children) el.style.background = TH.off;
-    $("range").textContent = "—";
-    $("clt").textContent = "—";
-    $("range-ring").setAttribute("r", "0");
-    $("warm").classList.remove("on");
+    write($("range"), "textContent", "—", "rng");
+    write($("clt"), "textContent", "—", "clt");
+    attr($("range-ring"), "r", "0", "rr");
+    if (memo.warm !== false) { memo.warm = false; $("warm").classList.remove("on"); }
   }
 
-  // ---- rough road ahead ----
-  if (now - roughAt > 1500) { roughAt = now; rough = nearestRough(); }
+  // rough road ahead
+  if (now - roughAt > 2500) { roughAt = now; rough = nearestRough(); }
   const show = !!rough && S.speed > 12;
-  $("holewarn").classList.toggle("on", show);
-  if (show) $("holewarn").textContent = "Rough road · " + Math.round(rough.d / 5) * 5 + " m";
+  if (memo.hole !== show) { memo.hole = show; $("holewarn").classList.toggle("on", show); }
+  if (show) write($("holewarn"), "textContent", "Rough road · " + Math.round(rough.d / 5) * 5 + " m", "holet");
 }
 
 /* Spotify block. Kept out of the frame loop — it only changes when a poll
