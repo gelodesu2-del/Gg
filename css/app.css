@@ -119,16 +119,16 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .shift{display:flex; gap:.3em; padding:1.15em 1.5em .75em; align-items:stretch}
 .seg{flex:1; background:var(--off); box-shadow:inset 0 0 0 1px rgba(var(--neon-rgb),.06)}
 
-.main{display:grid; grid-template-columns:37em 1fr; border-top:1px solid var(--edge); min-height:0}
-.left{position:relative; padding:1.6em 1.9em 1.8em; display:grid; grid-template-rows:1fr auto auto auto; gap:1.05em; min-height:0; border-right:1px solid var(--edge)}
+.main{display:grid; grid-template-columns:41em 1fr; border-top:1px solid var(--edge); min-height:0}
+.left{position:relative; padding:1.4em 1.9em 1.5em; display:grid; grid-template-rows:1fr auto auto auto; gap:.9em; min-height:0; border-right:1px solid var(--edge)}
 .speedwrap{display:flex; flex-direction:column; justify-content:center; min-height:0; overflow:hidden}
 .speed-row{display:flex; align-items:center; justify-content:space-between; gap:.6em; min-width:0}
 .speed{
-  font-family:var(--f-num); font-weight:800; font-size:10.9em; line-height:.86;
+  font-family:var(--f-num); font-weight:800; font-size:13.0em; line-height:.84;
   letter-spacing:-.01em; color:#EAFFF2;
   text-shadow:-.016em 0 rgba(var(--gold-rgb),.6), .016em 0 rgba(var(--neon-rgb),.6);
 }
-.speed-lbl{font-size:1.3em; letter-spacing:.32em; color:var(--ink-3); margin-top:.5em; text-transform:uppercase}
+.speed-lbl{font-size:1.2em; letter-spacing:.3em; color:var(--ink-3); margin-top:.35em; text-transform:uppercase}
 .slim{flex:none; display:flex; flex-direction:column; align-items:center; line-height:1; opacity:0; transition:opacity .3s; pointer-events:none; padding-right:.2em}
 .slim.on{opacity:1}
 .slim-x{font-family:var(--f-num); font-weight:800; font-size:4.6em; color:var(--red); text-shadow:0 0 .35em rgba(var(--red-rgb),.6)}
@@ -141,21 +141,21 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .cell::before,.fuel::before,.media::before{top:-1px; left:-1px; border-right:0; border-bottom:0}
 .cell::after,.fuel::after,.media::after{bottom:-1px; right:-1px; border-left:0; border-top:0}
 
-.media{padding:.75em .85em; display:flex; align-items:center; gap:.9em}
+.media{padding:.5em .75em; display:flex; align-items:center; gap:.75em}
 .m-l{flex:1; min-width:0; display:flex; flex-direction:column; gap:.2em}
 .m-src{font-size:1.05em; letter-spacing:.22em; text-transform:uppercase; color:var(--neon); opacity:.85}
-.m-t{font-size:1.5em; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.m-a{font-size:1.15em; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.m-row{display:flex; align-items:center; gap:.55em; margin-top:.15em}
+.m-t{font-size:1.4em; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.m-a{font-size:1.1em; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.m-row{display:flex; align-items:center; gap:.5em; margin-top:.1em}
 .m-b{background:transparent; border:0; padding:.15em; cursor:pointer; color:var(--ink-2); display:flex; line-height:0}
 .m-b:active{color:var(--neon)}
-.m-b svg{width:1.5em; height:1.5em; fill:currentColor}
-.m-play svg{width:1.9em; height:1.9em}
+.m-b svg{width:1.35em; height:1.35em; fill:currentColor}
+.m-play svg{width:1.7em; height:1.7em}
 .m-play{color:var(--neon)}
 .m-time{margin-left:auto; font-size:1.15em; color:var(--ink-3); font-variant-numeric:tabular-nums}
-.m-prog{display:block; height:.28em; background:var(--off); margin-top:.15em}
+.m-prog{display:block; height:.24em; background:var(--off); margin-top:.15em}
 .m-prog i{display:block; height:100%; background:var(--neon); box-shadow:0 0 .5em var(--neon); width:0}
-.m-art{width:4.6em; height:4.6em; flex:none; border:1px solid var(--edge); background:var(--panel) center/cover no-repeat}
+.m-art{width:3.4em; height:3.4em; flex:none; border:1px solid var(--edge); background:var(--panel) center/cover no-repeat}
 .m-off{position:absolute; inset:0; display:none; align-items:center; justify-content:center; gap:1.1em; background:rgba(4,5,7,.93)}
 .media[data-sp="off"] .m-off{display:flex}
 .m-off-t{font-size:1.35em; color:var(--ink-3)}
@@ -163,23 +163,23 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
   color:var(--neon); border:1px solid var(--neon); background:transparent; padding:.45em 1.1em; cursor:pointer}
 
 .stats{display:grid; grid-template-columns:1fr 1.55fr; gap:.85em}
-.cell{padding:.85em .95em .8em}
+.cell{padding:.7em .9em .65em}
 .cell .k,.fuel .k{font-size:1.15em; letter-spacing:.2em; color:var(--ink-3); text-transform:uppercase; display:block}
 .cell .v{font-family:var(--f-num); font-weight:700; font-size:3.1em; line-height:1.1; display:block; margin-top:.15em;
   text-shadow:0 0 .4em rgba(var(--neon-rgb),.3)}
 .cell.lean{display:flex; flex-direction:column}
-.leansvg{width:100%; height:auto; aspect-ratio:200/92; margin-top:.25em; display:block}
+.leansvg{height:6.1em; width:auto; max-width:100%; aspect-ratio:200/92; margin:.2em auto 0; display:block}
 #lean-track{stroke:#171B22}
 #lean-ticks{stroke:#39424E}
 #lean-mark line:first-child{stroke:rgba(var(--neon-rgb),.30)}
 .pk{fill:var(--mint)}
 
-.fuel{padding:.7em 1em .75em}
+.fuel{padding:.55em 1em .6em}
 .fuel-head{display:flex; justify-content:space-between; align-items:baseline}
 .fuel-head .v{font-family:var(--f-num); font-weight:700; font-size:2.1em}
 .fuel-head .v small,.cell .v small{font-family:var(--f-mono); font-size:.46em; color:var(--ink-3); margin-left:.25em}
-.pips{display:flex; gap:.22em; margin-top:.6em}
-.pip{flex:1; height:.75em; background:var(--off); box-shadow:inset 0 0 0 1px rgba(var(--neon-rgb),.07)}
+.pips{display:flex; gap:.22em; margin-top:.45em}
+.pip{flex:1; height:.62em; background:var(--off); box-shadow:inset 0 0 0 1px rgba(var(--neon-rgb),.07)}
 
 /* engine data is absent until the dongle lands */
 .tag-off{position:absolute; top:-1px; right:-1px; font-size:.95em; letter-spacing:.12em;
