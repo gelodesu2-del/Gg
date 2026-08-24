@@ -64,6 +64,10 @@ public class MainActivity extends Activity {
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        // A WebView reports display-mode: browser, so the page cannot tell it
+        // apart from a tab and would reserve room for a status bar that
+        // immersive mode has already hidden. Say so explicitly instead.
+        s.setUserAgentString(s.getUserAgentString() + " NMAXDashShell/1.0");
         if (Build.VERSION.SDK_INT >= 26) s.setSafeBrowsingEnabled(false);
 
         web.setBackgroundColor(0xFF040507);

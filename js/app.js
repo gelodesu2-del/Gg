@@ -103,7 +103,10 @@ function measureRefresh() {
 /* Installed apps hide the system status bar; a browser tab does not, and it
    lands on the speed. Checked rather than assumed. */
 function detectInstalled() {
-  const standalone =
+  // The native shell hides the system bars itself, so it counts as installed
+  // even though a WebView reports display-mode: browser.
+  const shell = / NMAXDashShell\//.test(navigator.userAgent);
+  const standalone = shell ||
     (window.matchMedia && (matchMedia("(display-mode: fullscreen)").matches ||
                            matchMedia("(display-mode: standalone)").matches ||
                            matchMedia("(display-mode: minimal-ui)").matches)) ||

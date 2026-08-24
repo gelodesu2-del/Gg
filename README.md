@@ -146,18 +146,21 @@ prefill a message to a given number — `chat?number=` opens the thread but
 drops the text, so the app uses `forward?text=`, which keeps the message that
 matters and costs one tap to choose who gets it.
 
-### 5. Install it
+### 5. Install the APK
 
-Open the address in Chrome on the phone. Menu → **Install app** (or *Add to
-Home Screen*). It installs as a real app: its own icon and name in the
-launcher, its own window in the app switcher, fullscreen with no browser
-chrome, locked to landscape, and a service worker that keeps it opening
-without signal.
+`android/nmax-dash.apk`. Copy it to the phone, tap it, allow installs from
+that source.
 
-That is a Progressive Web App rather than an APK. **Install it — do not just
-bookmark it.** A browser tab keeps the system status bar over the top of the
-page, where it sits directly on the speed readout. Installed, that space comes
-back. The diagnostics block reports which mode is running.
+The APK is the only way in. Installing as a Progressive Web App was removed —
+running both meant two copies with separate storage, so pins, trips, themes
+and the Spotify login would each have to be set up twice and would then drift
+apart. The service worker stays: the APK uses it for offline caching and for
+the update banner.
+
+Opening the URL in a browser tab still works for a quick look, but the system
+status bar sits over the top of the page there, so the dash reserves room for
+it. The shell identifies itself in its user agent and skips that reservation.
+Diagnostics reports which is running.
 
 ### The APK
 
