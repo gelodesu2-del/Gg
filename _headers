@@ -1,0 +1,25 @@
+# Cloudflare Pages headers.
+# Ignored by GitHub Pages, so keeping both hosting options open costs nothing.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  # The dash needs these itself and nothing else should get them. If sensors
+  # ever stop working after a deploy, this line is the first place to look.
+  Permissions-Policy: geolocation=(self), accelerometer=(self), gyroscope=(self)
+
+# The shell must revalidate or a pushed fix would sit behind a cached page
+# on a phone that rarely clears anything.
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+
+# Modules are unversioned, so they cannot be cached hard either. An hour is
+# long enough to save the battery on repeat opens and short enough that a fix
+# lands the same ride.
+/css/*
+  Cache-Control: public, max-age=3600, must-revalidate
+/js/*
+  Cache-Control: public, max-age=3600, must-revalidate

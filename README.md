@@ -32,15 +32,40 @@ Anything needing engine data shows a dash until the dongle is connected.
 
 ### 1. Host it
 
-Push this repo and turn on GitHub Pages (Settings → Pages → deploy from
-branch). You get an HTTPS address, which both Google and Spotify require.
+Both Google and Spotify require an HTTPS address, so the app has to be served
+rather than opened from a file. Either host works; Cloudflare is the better
+fit.
+
+**Cloudflare Pages** *(recommended)*
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → Workers & Pages → Create → Pages → Connect to Git
+2. Pick this repo and the branch you want to serve
+3. Framework preset **None**, build command **empty**, output directory **`/`**
+4. Deploy
+
+You get `https://<project>.pages.dev`, and every push redeploys. It is faster
+than the alternative from the Philippines — Cloudflare has edge presence in
+Manila — it serves any branch without merging, and `_headers` in this repo is
+applied automatically. If the crash webhook ever gets built, Cloudflare
+Functions can host it on the same domain.
+
+**One trap:** Cloudflare gives every preview build its own URL
+(`abc123.<project>.pages.dev`). Spotify matches redirect URIs exactly and does
+not accept wildcards, so **log in only from the production URL**, or add each
+preview URL you actually use to the Spotify dashboard.
+
+**GitHub Pages**
+
+Settings → Pages → deploy from a branch. Gives
+`https://<user>.github.io/<repo>/`. Simpler, one URL, no preview-URL trap,
+slightly slower from Manila.
 
 ### 2. Google Maps key
 
 1. [Google Cloud console](https://console.cloud.google.com/) → new project
 2. Enable **Maps JavaScript API**
 3. Credentials → create an API key
-4. **Restrict it** to HTTP referrers, and add your Pages address
+4. **Restrict it** to HTTP referrers, and add your deployed address
 
 An unrestricted key on a public page is the one mistake here that costs real
 money. For one rider on one phone the usage itself sits far inside the free
@@ -49,7 +74,8 @@ tier.
 ### 3. Spotify client ID
 
 1. [Spotify developer dashboard](https://developer.spotify.com/dashboard) → create an app
-2. Add your Pages address as a **Redirect URI** (exactly, including any trailing path)
+2. Add your deployed address as a **Redirect URI**, exactly — scheme, host and
+   any trailing path must match character for character
 3. Copy the Client ID
 
 Playback control requires **Spotify Premium**. On a free account the dash shows
@@ -123,6 +149,8 @@ browser chrome.
 ## Layout
 
 ```
+_headers          Cloudflare Pages caching and security headers
+.nojekyll         stops GitHub Pages running the files through Jekyll
 index.html        markup for both panes
 css/app.css       everything visual, themes included
 js/state.js       config, live state, persistence
