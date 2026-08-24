@@ -1,74 +1,175 @@
-/* Google Maps, heading-up.
+/* Google Maps.
 
-   Raster maps do not honour setHeading, so rotation is done by spinning an
-   oversized container under a fixed viewport — the rotor is 190% of the panel
-   so its corners never come into view. The bike marker is drawn in the SVG
-   overlay above it and never moves. */
+   Two rendering paths, because they behave very differently.
+
+   With a Map ID that has vector rendering enabled, the map rotates itself
+   through the camera and street labels stay upright — the same behaviour the
+   OpenStreetMap path gets for free. Styling then lives in the cloud console,
+   and any inline styles array is ignored.
+
+   Without one, tiles are raster. Raster maps ignore heading entirely, so
+   heading-up means spinning an oversized container underneath a fixed
+   viewport — which turns the labels over with the world. That is the cost of
+   skipping the Map ID, and it is worth knowing before choosing. */
 
 import { S, settings } from "./state.js";
 
 let map = null;
 let rotor = null;
+let vector = false;
 let lastCenter = 0;
+let lastHeading = 0;
+let destMarker = null;
 
-const DARK = [
-  { elementType: "geometry", stylers: [{ color: "#0b0d10" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#0b0d10" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#5c6570" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#1a1f26" }] },
-  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#242b34" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#2e3742" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#6a747f" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#070f16" }] },
-  { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: "#0e1418" }] }
-];
+/* The map is styled from the live theme rather than a fixed palette, so
+   switching to crimson turns the roads crimson too. Everything is mixed from
+   the accent toward a near-black ground: roads climb in brightness with their
+   importance, labels sit above them, and points of interest are removed
+   entirely — a dash needs the road network, not restaurant pins.
+
+   Google's styling cannot do glow, so the cyber read comes from the ratios:
+   a very dark ground, a narrow band of accent-tinted roads, and labels bright
+   enough to catch but not to compete with the cluster. */
+function mix(rgb, k, base) {
+  const b = base || [4, 6, 9];
+  return "#" + rgb.map((c, i) => Math.round(b[i] + (c - b[i]) * k)
+    .toString(16).padStart(2, "0")).join("");
+}
+
+export function themeStyles() {
+  let rgb = [0, 245, 140];
+  try {
+    const v = getComputedStyle(document.getElementById("app")).getPropertyValue("--neon-rgb");
+    const p = v.split(",").map((n) => parseInt(n, 10));
+    if (p.length === 3 && p.every((n) => !isNaN(n))) rgb = p;
+  } catch (e) { /* fall back to the default accent */ }
+
+  const WATER_BASE = [3, 9, 15];        // water leans blue rather than neutral
+
+  return [
+    { elementType: "geometry", stylers: [{ color: mix(rgb, 0.02) }] },
+    { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#040609" }, { weight: 3 }] },
+    { elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.42) }] },
+
+    { featureType: "poi", stylers: [{ visibility: "off" }] },
+    { featureType: "transit", stylers: [{ visibility: "off" }] },
+    { featureType: "administrative", elementType: "geometry", stylers: [{ color: mix(rgb, 0.16) }] },
+    { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+    { featureType: "administrative.neighborhood", stylers: [{ visibility: "off" }] },
+
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: mix(rgb, 0.03) }] },
+    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: mix(rgb, 0.06) }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: mix(rgb, 0.08) }] },
+
+    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.11) }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.17) }] },
+    { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.22) }] },
+    { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.38) }] },
+    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.52) }] },
+    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.60) }] },
+    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.80) }] },
+
+    { featureType: "water", elementType: "geometry", stylers: [{ color: mix(rgb, 0.10, WATER_BASE) }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.35, WATER_BASE) }] }
+  ];
+}
+
+/* Google answers an auth failure with a grey panel and writes the real reason
+   to the console, which is useless on a phone with no devtools attached.
+   These are the codes it emits, translated into the thing to go and fix. */
+const MAP_ERRORS = {
+  BillingNotEnabledMapError: "Billing is not enabled on the Google Cloud project. Maps needs a card on file even inside the free tier.",
+  ApiNotActivatedMapError: "Maps JavaScript API is not enabled on the project — that exact API, not just any Maps one.",
+  RefererNotAllowedMapError: "This address is not in the key's allowed referrers. Add it and give it a few minutes.",
+  InvalidKeyMapError: "That key is not valid. Check for a stray space when pasting.",
+  ExpiredKeyMapError: "That key has expired.",
+  MissingKeyMapError: "No key was sent.",
+  RefererDeniedMapError: "The referrer was denied for this key.",
+  ApiTargetBlockedMapError: "The key is restricted to other APIs. Allow Maps JavaScript API under API restrictions.",
+  InvalidMapIdError: "That Map ID is not valid for this project. Leave it blank to fall back to raster tiles.",
+  ScriptBlocked: "Could not reach Google's servers. Check the connection.",
+  AuthFailure: "Google refused the key — usually billing, or the API not being enabled."
+};
+
+function fail(code) {
+  const el = document.getElementById("map-none");
+  if (!el) return;
+  el.classList.remove("hide");
+  el.textContent = MAP_ERRORS[code] || ("Maps refused the key: " + code);
+  document.getElementById("map-slot").classList.remove("live");
+}
+
+function watchForAuthErrors() {
+  if (window.__nmaxMapWatch) return;
+  window.__nmaxMapWatch = true;
+  const original = console.error;
+  console.error = function (...args) {
+    const m = /Google Maps JavaScript API (?:error|warning):\s*(\w+)/.exec(args.join(" "));
+    if (m) fail(m[1]);
+    original.apply(console, args);
+  };
+  window.gm_authFailure = () => fail("AuthFailure");
+}
 
 export function load() {
   if (!settings.mapKey) return false;
   if (document.getElementById("gmaps-js")) return true;
+  watchForAuthErrors();
   window.__nmaxMapReady = init;
   const s = document.createElement("script");
   s.id = "gmaps-js";
   s.async = true;
   s.src = "https://maps.googleapis.com/maps/api/js?key=" +
-          encodeURIComponent(settings.mapKey) + "&callback=__nmaxMapReady&loading=async";
-  s.onerror = () => { document.getElementById("map-none").textContent = "Map key rejected"; };
+          encodeURIComponent(settings.mapKey) + "&callback=__nmaxMapReady&loading=async&v=weekly";
+  s.onerror = () => fail("ScriptBlocked");
   document.head.appendChild(s);
   return true;
 }
 
 function init() {
   rotor = document.getElementById("map-rotor");
-  map = new google.maps.Map(document.getElementById("gmap"), {
+  vector = !!settings.mapId;
+
+  const opts = {
     center: { lat: S.lat ?? 14.55, lng: S.lng ?? 121.03 },
     zoom: 17,
     disableDefaultUI: true,
     gestureHandling: "none",
     keyboardShortcuts: false,
     clickableIcons: false,
-    backgroundColor: "#030406",
-    styles: DARK
-  });
+    backgroundColor: "#030406"
+  };
+  // A Map ID and an inline styles array are mutually exclusive: passing both
+  // makes Google ignore the styles and warn about it.
+  if (vector) { opts.mapId = settings.mapId; opts.heading = 0; opts.tilt = 0; }
+  else { opts.styles = themeStyles(); }
+
+  map = new google.maps.Map(document.getElementById("gmap"), opts);
   document.getElementById("map-none").classList.add("hide");
   document.getElementById("map-slot").classList.add("live");
+  if (vector) rotor.style.transform = "";     // the camera turns instead
 }
 
-/* Called from the frame loop. Recentring is throttled — Maps does its own
-   easing and calling it at 60fps just burns battery for no visible gain. */
 export function update(now) {
-  if (!map || !rotor) return;
-  // Raster tiles ignore setHeading, so heading-up means spinning the container.
-  rotor.style.transform = "rotate(" + (-S.heading).toFixed(1) + "deg)";
+  if (!map) return;
+
+  if (vector) {
+    if (Math.abs(S.heading - lastHeading) > 0.8) {
+      lastHeading = S.heading;
+      map.setHeading(S.heading);              // labels stay upright
+    }
+  } else if (rotor) {
+    rotor.style.transform = "rotate(" + (-S.heading).toFixed(1) + "deg)";
+  }
+
+  // Recentring is throttled: Maps eases on its own, and calling this every
+  // frame only burns battery.
   if (S.lat !== null && now - lastCenter > 250) {
     lastCenter = now;
     map.setCenter({ lat: S.lat, lng: S.lng });
   }
 }
-
-export function ready() { return !!map; }
-let destMarker = null;
 
 export function setDestination(d) {
   if (!map || !window.google) return;
@@ -83,4 +184,12 @@ export function setDestination(d) {
   });
 }
 
-export function usesCssRotor() { return true; }
+/* Called when the theme changes. Vector maps take their styling from the
+   cloud console, so only the raster path can follow the theme at runtime. */
+export function restyle() {
+  if (map && !vector) map.setOptions({ styles: themeStyles() });
+}
+
+export function usesCssRotor() { return !vector; }
+export function isVector() { return vector; }
+export function ready() { return !!map; }

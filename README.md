@@ -77,7 +77,27 @@ neither loss matters much; for finding a place, Google is better.
 
 Skip the rest of this section unless you want Google specifically.
 
-### 2b. Google Maps key (optional)
+### 2b. Google Maps (optional)
+
+Google brings live traffic and better places data. It costs a billing account
+and, for the best result, one extra step.
+
+**The map follows your theme.** Roads, labels and water are all mixed from the
+active accent toward a near-black ground, so switching to crimson turns the map
+crimson. Points of interest are removed — a dash needs the road network, not
+restaurant pins.
+
+**Map ID (recommended).** Without one, Google serves raster tiles, which ignore
+heading entirely — so heading-up means spinning the container, and **street
+labels turn upside down with the world**. With a vector Map ID the map rotates
+through its own camera and labels stay upright.
+
+Google Cloud → Map Management → **Create Map ID** → type **JavaScript**,
+rendering **Vector**. Paste it into setup field 3.
+
+The trade: a Map ID takes its styling from the cloud console, so the map can no
+longer follow your theme at runtime. Upright labels or theme-matched colours,
+not both. Leave the Map ID blank to keep the theming.
 
 1. [Google Cloud console](https://console.cloud.google.com/) → new project
 2. Enable **Maps JavaScript API**

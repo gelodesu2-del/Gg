@@ -8,7 +8,15 @@ import { settings } from "./state.js";
 import * as google from "./gmap.js";
 import * as osm from "./osm.js";
 
-const pick = () => (settings.mapProvider === "google" ? google : osm);
+/* "auto" means: use Google when it has been configured, otherwise the map
+   that needs nothing. Explicit choices still win. */
+function resolve() {
+  if (settings.mapProvider === "google") return "google";
+  if (settings.mapProvider === "osm") return "osm";
+  return settings.mapKey ? "google" : "osm";
+}
+export function providerName() { return resolve(); }
+const pick = () => (resolve() === "google" ? google : osm);
 let active = null;
 
 export function load() {
@@ -38,6 +46,10 @@ export function setDestination(d) {
   if (active && active.setDestination) active.setDestination(d);
 }
 
+export function restyle() {
+  if (active && active.restyle) active.restyle();
+}
+
 export function swap() {
   if (osm.destroy) osm.destroy();
   const slot = document.getElementById("map-slot");
@@ -48,7 +60,7 @@ export function swap() {
   document.getElementById("map-rotor").style.transform = "";
   // Google's SDK cannot be unloaded once injected, so a swap back to it needs
   // a reload; OSM can be torn down and rebuilt in place.
-  if (settings.mapProvider === "google" && document.getElementById("gmaps-js")) location.reload();
+  if (resolve() === "google" && document.getElementById("gmaps-js")) location.reload();
   else load();
-  document.getElementById("map-attr").hidden = settings.mapProvider === "google";
+  document.getElementById("map-attr").hidden = resolve() === "google";
 }

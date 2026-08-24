@@ -39,8 +39,9 @@ const defaults = {
   alertChannel: "sms",
   smsTemplate: "I may have crashed. Last known position: {link}",
   speedLimit: 60,
-  mapProvider: "osm",
+  mapProvider: "auto",
   mapKey: "",
+  mapId: "",
   spotifyId: "",
   odoOffset: 0,
   setupDone: false

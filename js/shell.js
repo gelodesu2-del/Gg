@@ -23,6 +23,7 @@ export function setTheme(name) {
   save({ theme: name });
   dash.readTheme();
   document.querySelectorAll(".sw-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === name)));
+  mapview.restyle();          // the map follows the theme too
   logs.render();
 }
 
@@ -108,10 +109,11 @@ export function init() {
   $("crash-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "crashDetect"));
   $("wake-sw").addEventListener("click", (e) => { const on = togSwitch(e.currentTarget, "wakeLock"); wake(on); });
   $("map-btn").addEventListener("click", (e) => {
-    const next = settings.mapProvider === "osm" ? "google" : "osm";
-    if (next === "google" && !settings.mapKey) { toast("Google needs a key and billing. OpenStreetMap needs neither."); return; }
+    const order = ["auto", "google", "osm"];
+    const next = order[(order.indexOf(settings.mapProvider) + 1) % order.length];
+    if (next === "google" && !settings.mapKey) { toast("Google needs a key. Set one in Keys first."); return; }
     save({ mapProvider: next });
-    e.currentTarget.textContent = next === "osm" ? "OpenStreetMap" : "Google";
+    e.currentTarget.textContent = mapLabel();
     mapview.swap();
     renderDiag();
   });
@@ -192,6 +194,7 @@ export function init() {
   $("setup-done").addEventListener("click", () => {
     save({
       mapKey: $("map-key").value.trim(),
+      mapId: $("map-id").value.trim(),
       spotifyId: $("sp-id").value.trim(),
       setupDone: true
     });
@@ -270,6 +273,12 @@ export function init() {
   goto(0);
 }
 
+function mapLabel() {
+  return settings.mapProvider === "auto"
+    ? "Auto · " + (mapview.providerName() === "google" ? "Google" : "OSM")
+    : settings.mapProvider === "google" ? "Google" : "OpenStreetMap";
+}
+
 function showMsg(text) {
   $("s-results").innerHTML = '<div class="s-msg">' + escapeHtml(text) + "</div>";
 }
@@ -320,7 +329,8 @@ function renderDiag() {
   $("diag").innerHTML =
     "<b>Numerals</b> " + (fontOk ? '<span class="ok">Orbitron</span>' : '<span class="bad">fallback — Orbitron did not load</span>') +
     " · <b>digit</b> " + cs.getPropertyValue("--dw").trim() +
-    "<br><b>Map</b> " + (settings.mapProvider === "osm" ? "OpenStreetMap · " : "Google · ") + mapState +
+    "<br><b>Map</b> " + mapLabel() + " · " + mapState +
+    (mapview.providerName() === "google" ? (settings.mapId ? " · vector" : " · raster, labels rotate") : "") +
     "<br><b>GPS</b> " + gps + " · <b>motion</b> " + (S.lean !== 0 || S.leanRaw !== 0 ? '<span class="ok">yes</span>' : "no movement seen") +
     "<br><b>Spotify</b> " + (S.spotify ? '<span class="ok">connected</span>' : "not connected") +
     "<br><b>Screen</b> " + innerWidth + "×" + innerHeight +
@@ -334,7 +344,7 @@ function syncSettings() {
   $("crash-sw").classList.toggle("on", settings.crashDetect);
   $("wake-sw").classList.toggle("on", settings.wakeLock);
   $("fx-sw").classList.toggle("on", settings.effects);
-  $("map-btn").textContent = settings.mapProvider === "osm" ? "OpenStreetMap" : "Google";
+  $("map-btn").textContent = mapLabel();
   $("edge-btn").textContent = settings.edgeInset[0].toUpperCase() + settings.edgeInset.slice(1);
   $("font-btn").textContent = settings.numeralFont === "auto" ? "Auto"
     : settings.numeralFont === "safe" ? "Safe" : "Orbitron";
@@ -380,6 +390,7 @@ function escapeHtml(s) {
 
 function syncSetup() {
   $("map-key").value = settings.mapKey || "";
+  $("map-id").value = settings.mapId || "";
   $("sp-id").value = settings.spotifyId || "";
 }
 
