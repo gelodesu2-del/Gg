@@ -106,6 +106,13 @@
             <span class="map-attr" id="map-attr" hidden>© OpenStreetMap contributors · © CARTO</span>
             <span class="chip warm" id="warm">Warm-up</span>
             <span class="chip hole" id="holewarn">Rough road ahead</span>
+            <button class="map-btn-search" id="search-btn" type="button" aria-label="Search destination">
+              <svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.3 14l5.4 5.4 1.4-1.4-5.4-5.4A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
+            </button>
+            <span class="chip to" id="to-chip" hidden>
+              <svg class="to-arrow" id="to-arrow" viewBox="0 0 24 24"><path d="M12 2l7 19-7-5-7 5z"/></svg>
+              <b id="to-dist">—</b><i id="to-name">—</i>
+            </span>
             <span class="chip tl">NAV <b id="hdg">—</b> · GPS <b id="lock">…</b></span>
             <span class="chip bl obd" id="clt-chip">CLT <b id="clt">—</b></span>
             <span class="chip br obd">RANGE <b id="range">—</b></span>
@@ -147,6 +154,7 @@
             <div class="srow"><span class="t">Theme<i>Applies everywhere</i></span><span class="swatches" id="swatches"></span></div>
             <div class="srow"><span class="t">Map<i>OpenStreetMap needs no account</i></span><button class="pill" id="map-btn" type="button">OpenStreetMap</button></div>
             <div class="srow"><span class="t">Numerals<i>Switch if the digits show as empty boxes</i></span><button class="pill" id="font-btn" type="button">Auto</button></div>
+            <div class="srow"><span class="t">Edge margin<i>Pull content in from a curved screen</i></span><button class="pill" id="edge-btn" type="button">Curved</button></div>
             <div class="srow"><span class="t">Screen effects<i>Scanlines and glow. Turn off if the dash stutters.</i></span><button class="sw on" id="fx-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Keys<i>Maps and Spotify</i></span><button class="pill" id="keys-btn" type="button">Edit</button></div>
 
@@ -181,6 +189,21 @@
             </div>
           </div>
           <button class="crash-btn" id="set-close" type="button">Close</button>
+        </div>
+
+        <div class="layer layer-search" id="layer-search">
+          <div class="ltitle">DESTINATION</div>
+          <form class="s-form" id="s-form">
+            <input class="fld" id="s-input" type="search" autocomplete="off" autocapitalize="off"
+                   spellcheck="false" placeholder="Place, street, landmark…" aria-label="Search destination">
+            <button class="pill" id="s-go" type="submit">Search</button>
+          </form>
+          <div class="s-results" id="s-results"></div>
+          <div class="s-foot">
+            <button class="crash-btn" id="s-close" type="button">Close</button>
+            <button class="crash-btn" id="s-clear" type="button">Clear destination</button>
+            <a class="crash-btn go" id="s-nav" href="#" target="_blank" rel="noopener" hidden>Navigate in Maps</a>
+          </div>
         </div>
 
         <div class="layer layer-crash" id="layer-crash" data-phase="count">

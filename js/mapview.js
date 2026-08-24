@@ -34,6 +34,10 @@ export function usesCssRotor() {
 
 export function ready() { return !!active && active.ready(); }
 
+export function setDestination(d) {
+  if (active && active.setDestination) active.setDestination(d);
+}
+
 export function swap() {
   if (osm.destroy) osm.destroy();
   const slot = document.getElementById("map-slot");
@@ -46,4 +50,5 @@ export function swap() {
   // a reload; OSM can be torn down and rebuilt in place.
   if (settings.mapProvider === "google" && document.getElementById("gmaps-js")) location.reload();
   else load();
+  document.getElementById("map-attr").hidden = settings.mapProvider === "google";
 }

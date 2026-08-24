@@ -140,6 +140,33 @@ behaves the same day to day.
 
 Then paste both keys into the setup screen and grant location and motion.
 
+### Destination search
+
+The magnifier on the map opens search. Geocoding is **Nominatim**, which is
+free and needs no key, so search works on either map provider. Results are
+biased toward where you are, and recent destinations are kept.
+
+Pick one and the dash shows a **homing chip**: distance and an arrow pointing
+where the destination actually lies from the saddle, rotating as you turn. A
+pin drops on the map.
+
+Turn-by-turn is deliberately not built in. **Navigate in Maps** hands the
+destination to the Google Maps app, which gives voice guidance, live traffic
+and rerouting — all better than this dash could draw, and free. What the dash
+keeps is the part you glance at: how far, and which way.
+
+### Fit
+
+Tuned for a **OnePlus 12** (3168×1440, 2.20:1, curved edges, 120 Hz):
+
+- **Edge margin** pulls content in from the curve, which Android does not
+  report through `env()` — that only covers cutouts. Default *Curved*; *Off*
+  and *Wide* are in settings.
+- The pager dots sit above centre. Held sideways the punch-hole camera is at
+  the vertical middle of one edge, which is exactly where they used to be.
+- The fast loop is capped near 60 fps. A 120 Hz panel would otherwise run it
+  twice as often for motion no rider can see, at twice the battery.
+
 ### Troubleshooting
 
 Settings has a **diagnostics** block reporting which font is in use, the map

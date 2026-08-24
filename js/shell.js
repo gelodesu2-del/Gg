@@ -7,6 +7,7 @@ import * as sensors from "./sensors.js";
 import * as spotify from "./spotify.js";
 import * as mapview from "./mapview.js";
 import * as sos from "./sos.js";
+import * as nav from "./nav.js";
 
 const $ = (id) => document.getElementById(id);
 const THEMES = [
@@ -114,6 +115,14 @@ export function init() {
     mapview.swap();
     renderDiag();
   });
+  $("edge-btn").addEventListener("click", (e) => {
+    const order = ["off", "curved", "wide"];
+    const next = order[(order.indexOf(settings.edgeInset) + 1) % order.length];
+    save({ edgeInset: next });
+    $("app").dataset.edge = next;
+    e.currentTarget.textContent = next[0].toUpperCase() + next.slice(1);
+    renderDiag();
+  });
   $("font-btn").addEventListener("click", (e) => {
     const order = ["auto", "orbitron", "safe"];
     const next = order[(order.indexOf(settings.numeralFont) + 1) % order.length];
@@ -201,6 +210,37 @@ export function init() {
   $("m-next").addEventListener("click", async () => { await spotify.next(); setTimeout(spotify.poll, 400); });
   $("m-prev").addEventListener("click", async () => { await spotify.prev(); setTimeout(spotify.poll, 400); });
 
+  // ---- destination search ----
+  $("search-btn").addEventListener("click", () => { layer("search"); showResults(nav.recents(), true); $("s-input").focus(); });
+  $("s-close").addEventListener("click", () => layer(""));
+  $("s-clear").addEventListener("click", () => {
+    nav.clear();
+    mapview.setDestination(null);
+    showResults(nav.recents(), true);
+    syncNav();
+    toast("Destination cleared");
+  });
+  $("s-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const q = $("s-input").value;
+    if (q.trim().length < 3) { showMsg("Type at least three characters."); return; }
+    showMsg("Searching…");
+    const hits = await nav.search(q);
+    if (hits === null) { showMsg("Search failed — check the connection."); return; }
+    if (!hits.length) { showMsg("Nothing found near you."); return; }
+    showResults(hits, false);
+  });
+  $("s-results").addEventListener("click", (e) => {
+    const row = e.target.closest(".s-row");
+    if (!row) return;
+    const d = JSON.parse(row.dataset.d);
+    nav.setDestination(d);
+    mapview.setDestination(d);
+    syncNav();
+    layer("");
+    toast("Heading for " + d.label);
+  });
+
   // ---- crash ----
   $("crash-cancel").addEventListener("click", () => {
     layer("");
@@ -222,8 +262,40 @@ export function init() {
   });
 
   $("app").dataset.fx = settings.effects ? "on" : "off";
+  $("app").dataset.edge = settings.edgeInset;
+  syncNav();
+  const d0 = nav.destination();
+  if (d0) setTimeout(() => mapview.setDestination(d0), 2500);   // after the map is up
   setTheme(settings.theme);
   goto(0);
+}
+
+function showMsg(text) {
+  $("s-results").innerHTML = '<div class="s-msg">' + escapeHtml(text) + "</div>";
+}
+
+function showResults(list, isRecent) {
+  if (!list.length) { showMsg(isRecent ? "No recent destinations yet." : "Nothing found."); return; }
+  $("s-results").innerHTML = list.map((d) => {
+    const km = S.lat === null ? "" : '<span class="km">' + nav.fmtDistance(haversineTo(d)) + "</span>";
+    return '<button class="s-row" type="button" data-d=\'' + escapeHtml(JSON.stringify(d)) + '\'>' +
+      '<span class="nm">' + escapeHtml(d.label) + "</span>" + km +
+      (isRecent ? '<span class="rc">recent</span>' : "") + "</button>";
+  }).join("");
+}
+
+function haversineTo(d) {
+  const R = 6371000;
+  const dLat = (d.lat - S.lat) * Math.PI / 180, dLng = (d.lng - S.lng) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(S.lat * Math.PI / 180) * Math.cos(d.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+function syncNav() {
+  const href = nav.navigateHref();
+  const a = $("s-nav");
+  a.hidden = !href;
+  if (href) a.href = href;
 }
 
 function togSwitch(el, key) {
@@ -251,7 +323,10 @@ function renderDiag() {
     "<br><b>Map</b> " + (settings.mapProvider === "osm" ? "OpenStreetMap · " : "Google · ") + mapState +
     "<br><b>GPS</b> " + gps + " · <b>motion</b> " + (S.lean !== 0 || S.leanRaw !== 0 ? '<span class="ok">yes</span>' : "no movement seen") +
     "<br><b>Spotify</b> " + (S.spotify ? '<span class="ok">connected</span>' : "not connected") +
-    "<br><b>Screen</b> " + innerWidth + "×" + innerHeight;
+    "<br><b>Screen</b> " + innerWidth + "×" + innerHeight +
+    " · dpr " + (devicePixelRatio || 1).toFixed(2) +
+    " · " + (innerWidth / innerHeight).toFixed(2) + ":1" +
+    "<br><b>Edge</b> " + settings.edgeInset + " · <b>refresh</b> " + (window.__hz || "?") + " Hz";
 }
 
 function syncSettings() {
@@ -260,6 +335,7 @@ function syncSettings() {
   $("wake-sw").classList.toggle("on", settings.wakeLock);
   $("fx-sw").classList.toggle("on", settings.effects);
   $("map-btn").textContent = settings.mapProvider === "osm" ? "OpenStreetMap" : "Google";
+  $("edge-btn").textContent = settings.edgeInset[0].toUpperCase() + settings.edgeInset.slice(1);
   $("font-btn").textContent = settings.numeralFont === "auto" ? "Auto"
     : settings.numeralFont === "safe" ? "Safe" : "Orbitron";
   $("lim-in").value = settings.speedLimit;

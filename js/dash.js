@@ -4,6 +4,7 @@
 
 import { CFG, S, settings } from "./state.js";
 import { nearestRough } from "./trips.js";
+import * as nav from "./nav.js";
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -208,6 +209,17 @@ export function renderSlow(now) {
     write($("clt"), "textContent", "—", "clt");
     attr($("range-ring"), "r", "0", "rr");
     if (memo.warm !== false) { memo.warm = false; $("warm").classList.remove("on"); }
+  }
+
+  // destination homing — how far, and which way from the saddle
+  const home = nav.homing();
+  if (memo.toShown !== !!home) { memo.toShown = !!home; $("to-chip").hidden = !home; }
+  if (home) {
+    write($("to-dist"), "textContent", nav.fmtDistance(home.m), "tod");
+    write($("to-name"), "textContent", home.label, "ton");
+    // transform as an attribute does not apply to an outer <svg>; CSS does.
+    const rot = "rotate(" + home.relative.toFixed(0) + "deg)";
+    if (memo.toa !== rot) { memo.toa = rot; $("to-arrow").style.transform = rot; }
   }
 
   // rough road ahead

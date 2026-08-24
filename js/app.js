@@ -61,10 +61,17 @@ function crashWatch(now) {
    follows them; everything else is read rather than watched, and updating it
    sixty times a second was most of the frame budget for no visible gain. */
 const SLOW_MS = 80;
-let lastSlow = 0, lastFrame = 0;
+const FAST_MS = 15;            // the lean arc gains nothing above ~60 Hz
+let lastSlow = 0, lastFrame = 0, lastFast = 0;
 
 function frame(now) {
+  requestAnimationFrame(frame);
+
+  // A 120 Hz panel would otherwise run every one of these twice, doubling the
+  // work and the battery draw for motion no rider can see.
+  if (now - lastFast < FAST_MS) return;
   const dt = lastFrame ? Math.min((now - lastFrame) / 1000, 0.25) : 0;
+  lastFast = now;
   lastFrame = now;
 
   dash.renderFast();
@@ -80,7 +87,17 @@ function frame(now) {
       spotify.poll().then(dash.renderSpotify);
     }
   }
-  requestAnimationFrame(frame);
+}
+
+/* Reported in diagnostics so a refresh-rate problem is visible rather than
+   guessed at. */
+function measureRefresh() {
+  let n = 0;
+  const t0 = performance.now();
+  (function s() {
+    if (++n < 40) requestAnimationFrame(s);
+    else window.__hz = Math.round(1000 / ((performance.now() - t0) / n));
+  })();
 }
 
 async function boot() {
@@ -110,6 +127,7 @@ async function boot() {
   }
 
   logs.render();
+  measureRefresh();
   requestAnimationFrame(frame);
 
   // A trip left open by a hard close should not swallow the next one.

@@ -68,4 +68,19 @@ export function update(now) {
 }
 
 export function ready() { return !!map; }
+let destMarker = null;
+
+export function setDestination(d) {
+  if (!map || !window.google) return;
+  if (destMarker) { destMarker.setMap(null); destMarker = null; }
+  if (!d) return;
+  destMarker = new google.maps.Marker({
+    position: { lat: d.lat, lng: d.lng }, map,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE, scale: 7,
+      fillColor: "#FFB833", fillOpacity: 1, strokeColor: "#0A0C10", strokeWeight: 2
+    }
+  });
+}
+
 export function usesCssRotor() { return true; }

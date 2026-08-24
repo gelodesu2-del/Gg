@@ -32,6 +32,7 @@ const defaults = {
   invertLean: false,
   wakeLock: true,
   effects: true,
+  edgeInset: "curved",
   numeralFont: "auto",
   crashDetect: true,
   contacts: [],

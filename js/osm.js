@@ -79,6 +79,17 @@ export function update(now) {
   }
 }
 
+let destMarker = null;
+
+export function setDestination(d) {
+  if (!map || !window.maplibregl) return;
+  if (destMarker) { destMarker.remove(); destMarker = null; }
+  if (!d) return;
+  const el = document.createElement("div");
+  el.className = "dest-pin";
+  destMarker = new maplibregl.Marker({ element: el }).setLngLat([d.lng, d.lat]).addTo(map);
+}
+
 export function usesCssRotor() { return false; }
 export function ready() { return !!map; }
 

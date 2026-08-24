@@ -32,11 +32,22 @@
 html,body{margin:0; height:100%; overflow:hidden; background:var(--ground); overscroll-behavior:none}
 body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antialiased}
 
+/* Curved-screen phones bend the outer few millimetres away from the viewer,
+   so anything at the extreme edge is distorted and awkward to press. Android
+   does not report curvature through env(), which only covers cutouts, so the
+   inset is a setting — default sized for a OnePlus 12. */
 #app{
+  --edge:14px;
   position:fixed; inset:0; overflow:hidden;
   container-type:size; font-size:9px; font-size:1cqw;
-  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding:
+    max(env(safe-area-inset-top), 2px)
+    max(env(safe-area-inset-right), var(--edge))
+    max(env(safe-area-inset-bottom), 2px)
+    max(env(safe-area-inset-left), var(--edge));
 }
+#app[data-edge="off"]{--edge:0px}
+#app[data-edge="wide"]{--edge:26px}
 
 /* ---------- stable numerals ---------- */
 #app[data-font="fallback"] .speed,
@@ -68,7 +79,9 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 }
 .pager.drag{transition:none}
 .pane{position:relative; overflow:hidden; min-width:0}
-.dots{position:absolute; z-index:15; right:.6em; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:.5em}
+/* Held sideways, the punch-hole camera sits at the vertical centre of one
+   edge — precisely where these used to be. Nudged clear of it. */
+.dots{position:absolute; z-index:15; right:.6em; top:32%; display:flex; flex-direction:column; gap:.5em}
 .dots i{display:block; width:.28em; height:1.8em; background:#2A3038; border-radius:.2em; transition:background .2s}
 .dots i.on{background:var(--neon); box-shadow:0 0 .6em var(--neon)}
 .gear{
@@ -186,6 +199,8 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .map-attr{position:absolute; z-index:3; bottom:.35em; left:.6em; font-size:.95em;
   color:var(--ink-3); background:rgba(4,5,8,.6); padding:.15em .45em; pointer-events:none}
 .maplibregl-map{background:#030406}
+.dest-pin{width:1.4em; height:1.4em; border-radius:50%; background:var(--gold);
+  box-shadow:0 0 0 .22em rgba(10,12,16,.9), 0 0 .9em var(--gold)}
 #range-ring{stroke:rgba(var(--neon-rgb),.30)}
 .mk-o{fill:rgba(var(--neon-rgb),.35)}
 .mk-i{fill:var(--neon)}
@@ -193,6 +208,37 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
   color:var(--neon); padding:.3em .6em; border:1px solid rgba(var(--neon-rgb),.3); background:rgba(4,5,8,.78)}
 .chip b{color:var(--ink); font-weight:400}
 .chip.tl{top:1.1em; left:1.2em}
+.map-btn-search{
+  position:absolute; z-index:4; top:1.1em; right:1.2em; width:3.6em; height:3.6em; padding:.75em;
+  background:rgba(4,5,8,.78); border:1px solid rgba(var(--neon-rgb),.35); color:var(--neon); cursor:pointer;
+}
+.map-btn-search svg{width:100%; height:100%; fill:currentColor}
+.map-btn-search:active{background:rgba(var(--neon-rgb),.18)}
+.chip.to{
+  top:1.1em; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:.55em;
+  max-width:64%; color:var(--neon); border-color:rgba(var(--neon-rgb),.45);
+}
+.chip.to[hidden]{display:none}
+.chip.to i{font-style:normal; color:var(--ink-2); text-transform:none; letter-spacing:.04em;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0}
+.to-arrow{width:1.3em; height:1.3em; fill:var(--neon); flex:none; transform-origin:50% 55%}
+
+/* ---------- search ---------- */
+.s-form{display:flex; gap:.6em; margin-top:1.2em}
+.s-form .fld{flex:1; font-size:1.5em}
+.s-form .pill{font-size:1.3em; padding:.5em 1.2em}
+.s-results{display:grid; gap:.4em; margin-top:.9em; max-height:16em; overflow-y:auto}
+.s-row{display:flex; align-items:baseline; gap:.8em; text-align:left; width:100%;
+  border:1px solid var(--edge); background:var(--panel); padding:.7em .95em; cursor:pointer; color:inherit; font-family:inherit}
+.s-row:active{border-color:var(--neon)}
+.s-row .nm{font-size:1.4em; color:var(--ink); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.s-row .km{font-size:1.2em; color:var(--neon); flex:none}
+.s-row .rc{font-size:1.05em; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); flex:none}
+.s-msg{font-size:1.3em; color:var(--ink-3); padding:.6em .1em}
+.s-foot{display:flex; gap:.6em; flex-wrap:wrap; margin-top:1em}
+.s-foot .crash-btn{margin-top:0; font-size:1.3em; padding:.6em 1.4em}
+.s-foot .go{border-color:var(--neon); color:var(--neon); text-decoration:none; display:inline-block}
+.s-foot .go[hidden]{display:none}
 .chip.bl{bottom:1.1em; left:1.2em}
 .chip.br{bottom:1.1em; right:5.4em}
 .chip.warm,.chip.hole{left:50%; transform:translateX(-50%); opacity:0; transition:opacity .25s;
