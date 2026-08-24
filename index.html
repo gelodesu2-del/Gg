@@ -162,6 +162,10 @@
                 <span class="t">Message<i>{link} is replaced with your position</i></span>
                 <input class="fld" id="ice-tpl" type="text" aria-label="Emergency message">
               </label>
+              <div class="ice-ch">
+                <span class="t">Alert via</span>
+                <span class="ch-btns" id="ch-btns"></span>
+              </div>
               <div class="sos-foot">
                 <button class="pill" id="ice-test" type="button">Send test message</button>
                 <span class="sos-note" id="ice-note"></span>
@@ -171,10 +175,17 @@
           <button class="crash-btn" id="set-close" type="button">Close</button>
         </div>
 
-        <div class="layer layer-crash" id="layer-crash">
-          <div class="crash-t">IMPACT DETECTED</div>
-          <p class="crash-s">No movement since the hit. Opening a message to your contact in</p>
-          <div class="crash-n" id="crash-n">12</div>
+        <div class="layer layer-crash" id="layer-crash" data-phase="count">
+          <div class="phase-count">
+            <div class="crash-t">IMPACT DETECTED</div>
+            <p class="crash-s">No movement since the hit. Preparing an alert in</p>
+            <div class="crash-n" id="crash-n">12</div>
+          </div>
+          <div class="phase-ready">
+            <div class="crash-t">ALERT READY</div>
+            <p class="crash-s" id="crash-body">—</p>
+            <button class="crash-btn send" id="crash-send" type="button">Send alert</button>
+          </div>
           <button class="crash-btn" id="crash-cancel" type="button">I'm OK — cancel</button>
         </div>
 

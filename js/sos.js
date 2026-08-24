@@ -13,6 +13,34 @@ import { settings, save } from "./state.js";
 
 export const MAX_CONTACTS = 3;
 
+/* How the alert leaves the phone.
+
+   SMS is the default on purpose: it is the only one that works with no data,
+   which is exactly the situation a crash can leave you in. Viber and the share
+   sheet are richer but both need a connection, and neither can address a
+   specific person from a link — Viber's scheme prefills the text and then asks
+   who to send it to. */
+export const CHANNELS = [
+  { id: "sms",   label: "SMS",   note: "Works with no data. Most reliable when it matters." },
+  { id: "share", label: "Share", note: "Android share sheet — Viber, Messenger, anything installed." },
+  { id: "viber", label: "Viber", note: "Opens Viber with the text ready; you pick who." }
+];
+
+export const channel = () => settings.alertChannel || "sms";
+export const shareSupported = () => !!(navigator.share && window.isSecureContext);
+
+/* Viber exposes no way to prefill a message to a given number — chat?number=
+   opens the thread but drops any text. forward?text= keeps the message, which
+   for an emergency is the half that matters, and costs one tap to choose the
+   recipient. */
+export const viberHref = (body) => "viber://forward?text=" + encodeURIComponent(body);
+
+/* Whether the chosen channel has everything it needs. Only SMS addresses a
+   person from the link, so only SMS requires a saved contact. */
+export function ready() {
+  return channel() === "sms" ? contacts().length > 0 : true;
+}
+
 /* Keep only characters a dialer will accept. Notably the leading + must
    survive: percent-encoding it breaks some messaging apps. */
 export const cleanTel = (t) => String(t || "").replace(/[^\d+]/g, "").replace(/(?!^)\+/g, "");
@@ -77,6 +105,35 @@ export function compose(lat, lng, { test = false } = {}) {
 export function href(body) {
   const to = contacts().map((c) => c.tel).join(",");
   return "sms:" + to + "?body=" + encodeURIComponent(body);
+}
+
+/* Hand the message off.
+
+   navigator.share needs transient user activation, so an auto-fire at the end
+   of the crash countdown is rejected by the browser. That is why the crash
+   screen always ends on a real button as well: the automatic attempt is best
+   effort, the button is the guarantee. */
+export async function deliver(body) {
+  const ch = channel();
+
+  if (ch === "share") {
+    if (!shareSupported()) return "unsupported";
+    try {
+      await navigator.share({ text: body });
+      return "sent";
+    } catch (e) {
+      return e && e.name === "AbortError" ? "cancelled" : "blocked";
+    }
+  }
+
+  if (ch === "viber") {
+    location.href = viberHref(body);
+    return "opened";
+  }
+
+  if (!contacts().length) return "nocontact";
+  location.href = href(body);
+  return "opened";
 }
 
 export function send(body) {

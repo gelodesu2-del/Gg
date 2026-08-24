@@ -139,9 +139,18 @@ export function init() {
     save({ smsTemplate: v || undefined });
     if (!v) e.target.value = sos.template();
   });
-  $("ice-test").addEventListener("click", () => {
-    if (!sos.contacts().length) { toast("Assign a contact first"); return; }
-    sos.send(sos.compose(S.lat, S.lng, { test: true }));
+  $("ice-test").addEventListener("click", async () => {
+    if (!sos.ready()) { toast("Assign a contact first"); return; }
+    const r = await sos.deliver(sos.compose(S.lat, S.lng, { test: true }));
+    if (r === "unsupported") toast("No share sheet in this browser");
+    else if (r === "blocked") toast("Share was blocked");
+  });
+  $("ch-btns").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    save({ alertChannel: b.dataset.ch });
+    renderChannels();
+    renderContacts();
   });
 
   // ---- setup ----
@@ -173,7 +182,19 @@ export function init() {
   $("m-prev").addEventListener("click", async () => { await spotify.prev(); setTimeout(spotify.poll, 400); });
 
   // ---- crash ----
-  $("crash-cancel").addEventListener("click", () => { layer(""); S.crashArmed = false; });
+  $("crash-cancel").addEventListener("click", () => {
+    layer("");
+    S.crashArmed = false;
+    S.crashReady = false;
+    $("layer-crash").dataset.phase = "count";
+  });
+  // The automatic attempt can be refused for want of user activation, so the
+  // screen always ends on a button that cannot be.
+  $("crash-send").addEventListener("click", async () => {
+    const r = await sos.deliver($("crash-body").textContent);
+    if (r === "sent" || r === "opened") { layer(""); S.crashReady = false; $("layer-crash").dataset.phase = "count"; }
+    else if (r === "nocontact") toast("No contact assigned");
+  });
 
   if (settings.wakeLock) wake(true);
   document.addEventListener("visibilitychange", () => {
@@ -199,7 +220,16 @@ function syncSettings() {
   $("lim-in").value = settings.speedLimit;
   $("ice-tpl").value = sos.template();
   $("ice-pick").hidden = !sos.pickerSupported();
+  renderChannels();
   renderContacts();
+}
+
+function renderChannels() {
+  const cur = sos.channel();
+  $("ch-btns").innerHTML = sos.CHANNELS
+    .filter((c) => c.id !== "share" || sos.shareSupported())
+    .map((c) => '<button type="button" data-ch="' + c.id + '" aria-pressed="' +
+      (c.id === cur) + '">' + c.label + "</button>").join("");
 }
 
 function renderContacts() {
@@ -213,11 +243,13 @@ function renderContacts() {
         '" aria-label="Remove ' + escapeHtml(c.name) + '">&times;</button></div>').join("")
     : '<div class="ice-none">No contact assigned — crash detection has nobody to message.</div>';
 
-  $("ice-note").textContent = !list.length
-    ? "Assign at least one."
-    : sos.pickerSupported()
-      ? "Sends to all " + list.length + ", though some messaging apps take only the first."
-      : "This browser has no contact picker, so numbers are entered by hand.";
+  const ch = sos.CHANNELS.find((c) => c.id === sos.channel());
+  $("ice-note").textContent =
+    sos.channel() !== "sms"
+      ? ch.note + " Contacts are only used by SMS."
+      : !list.length
+        ? "Assign at least one — SMS needs a recipient."
+        : "Sends to all " + list.length + ", though some messaging apps take only the first.";
 }
 
 function escapeHtml(s) {

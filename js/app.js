@@ -23,7 +23,7 @@ sensors.setJoltHandler((hit) => trips.noteJolt(hit));
    hands a composed message to the messaging app — see sos.js for why that last
    step cannot be automatic. Does nothing at all with no contact assigned. */
 function crashWatch(now) {
-  if (!settings.crashDetect || !sos.contacts().length) return;
+  if (!settings.crashDetect || !sos.ready()) return;
 
   if (S.accel < -CFG.crashDecel / 9.81) decelPeak = now;
 
@@ -46,10 +46,13 @@ function crashWatch(now) {
     $("crash-n").textContent = Math.max(0, left);
     if (left <= 0) {
       S.crashArmed = false;
+      S.crashReady = true;
       stillSince = 0;
       decelPeak = 0;
-      shell.layer("");
-      sos.send(sos.compose(S.lat, S.lng));
+      const body = sos.compose(S.lat, S.lng);
+      $("crash-body").textContent = body;
+      $("layer-crash").dataset.phase = "ready";
+      sos.deliver(body);            // best effort — the button is the guarantee
     }
   }
 }

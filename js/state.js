@@ -33,6 +33,7 @@ const defaults = {
   wakeLock: true,
   crashDetect: true,
   contacts: [],
+  alertChannel: "sms",
   smsTemplate: "I may have crashed. Last known position: {link}",
   speedLimit: 60,
   mapKey: "",

@@ -68,6 +68,21 @@ replaced with a Google Maps link to your last known position. **Send test
 message** composes a real one prefixed `[TEST — no emergency]` so you can check
 the whole path before you ever need it.
 
+**Alert via** picks the channel:
+
+| | Behaviour |
+|---|---|
+| **SMS** *(default)* | Addresses your saved contacts directly. The only one that works with **no data**. |
+| **Share** | Android share sheet — Viber, Messenger, WhatsApp, Telegram, whatever is installed. |
+| **Viber** | Opens Viber with the message already written; you tap the recipient. |
+
+SMS is the default deliberately. A crash can leave you somewhere with no
+signal for data but enough for a text, and it is the only channel that can
+address a specific person from a link. Viber's URL scheme has no way to
+prefill a message to a given number — `chat?number=` opens the thread but
+drops the text, so the app uses `forward?text=`, which keeps the message that
+matters and costs one tap to choose who gets it.
+
 ### 5. On the phone
 
 Open the address in Chrome, paste both keys into the setup screen, grant
@@ -83,6 +98,13 @@ browser chrome.
   messaging app a message with recipients and position already filled in — you
   tap send. A fully automatic alert needs a webhook (Telegram bot or similar);
   say the word and it is about thirty lines.
+- **The alert always ends on a button.** `navigator.share` requires a real user
+  gesture, so a share fired automatically at the end of the countdown is
+  refused by the browser. The countdown therefore ends on an **Send alert**
+  screen with the message shown: the automatic attempt is best effort, the
+  button is the guarantee.
+- **Viber and the share sheet need data.** SMS does not. That is why it is
+  the default.
 - **Multi-recipient SMS is inconsistent.** The link addresses everyone on the
   list, which Google Messages handles; some third-party messaging apps take
   only the first recipient. Put the person who must always get it at the top.
