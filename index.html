@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#040507">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>NMAX Dash</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Share+Tech+Mono&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23040507'/%3E%3Cpath d='M6 20h20M10 20a3 3 0 106 0 3 3 0 10-6 0M18 20a3 3 0 106 0 3 3 0 10-6 0' stroke='%2300F58C' stroke-width='2' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<div id="app" data-theme="emerald">
+  <div class="pager" id="pager">
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <section class="pane pane-dash">
+      <div class="dash" id="dash">
+
+        <div class="shift" id="shift"></div>
+
+        <div class="main">
+          <div class="left">
+            <div class="speedwrap">
+              <div class="speed-row">
+                <div class="speed num" id="speed">0</div>
+                <div class="slim" id="slim"><span class="slim-x">!</span><span class="slim-n" id="slim-n">60</span></div>
+              </div>
+              <div class="speed-lbl">km/h · gps</div>
+            </div>
+
+            <div class="media" id="media" data-sp="off">
+              <div class="m-l">
+                <span class="m-src">Spotify</span>
+                <span class="m-t" id="m-t">—</span>
+                <span class="m-a" id="m-a">—</span>
+                <div class="m-row">
+                  <button class="m-b" id="m-prev" type="button" aria-label="Previous track"><svg viewBox="0 0 24 24"><path d="M6 6h2.5v12H6zM20 6v12L10 12z"/></svg></button>
+                  <button class="m-b m-play" id="m-play" type="button" aria-label="Play or pause"><svg viewBox="0 0 24 24"><path id="m-icon" d="M8 5v14l11-7z"/></svg></button>
+                  <button class="m-b" id="m-next" type="button" aria-label="Next track"><svg viewBox="0 0 24 24"><path d="M15.5 6H18v12h-2.5zM4 6l10 6-10 6z"/></svg></button>
+                  <span class="m-time" id="m-time">0:00</span>
+                </div>
+                <span class="m-prog"><i id="m-prog"></i></span>
+              </div>
+              <div class="m-art" id="m-art"></div>
+              <div class="m-off">
+                <span class="m-off-t">Spotify not connected</span>
+                <button class="m-off-b" id="sp-connect" type="button">Connect</button>
+              </div>
+            </div>
+
+            <div class="stats">
+              <div class="cell obd">
+                <span class="tag-off">NO OBD</span>
+                <span class="k">RPM</span>
+                <span class="v"><span class="num r4" id="rpm">—</span></span>
+              </div>
+              <div class="cell lean">
+                <span class="k">Lean</span>
+                <svg class="leansvg" viewBox="0 0 200 92" aria-label="Lean angle">
+                  <path id="lean-track" d="" fill="none" stroke-width="8" stroke-linecap="round"/>
+                  <g id="lean-ticks" stroke-width="1.5"></g>
+                  <path id="lean-glow" d="" fill="none" stroke-width="11" stroke-linecap="round"/>
+                  <path id="lean-arc"  d="" fill="none" stroke-width="4" stroke-linecap="round"/>
+                  <g id="peaks"></g>
+                  <g id="lean-mark">
+                    <line x1="100" y1="22" x2="100" y2="10" stroke-width="7" stroke-linecap="round"/>
+                    <line x1="100" y1="22" x2="100" y2="10" stroke="#F2F6FA" stroke-width="2.2" stroke-linecap="round"/>
+                  </g>
+                  <circle cx="100" cy="80" r="2.6" fill="#F2F6FA"/>
+                  <text x="100" y="67" id="lean-val"  fill="#E7EBF0" font-family="Orbitron,sans-serif" font-size="31" font-weight="700" text-anchor="middle">00°</text>
+                  <text x="100" y="79" id="lean-side" fill="#616974" font-family="Share Tech Mono,monospace" font-size="9" letter-spacing="1.8" text-anchor="middle">UPRIGHT</text>
+                  <text x="14"  y="88" id="peak-l" fill="#5A6470" font-family="Share Tech Mono,monospace" font-size="10" text-anchor="start">L 00</text>
+                  <text x="186" y="88" id="peak-r" fill="#5A6470" font-family="Share Tech Mono,monospace" font-size="10" text-anchor="end">R 00</text>
+                </svg>
+              </div>
+            </div>
+
+            <div class="fuel obd">
+              <span class="tag-off">NO OBD</span>
+              <div class="fuel-head">
+                <span class="k">Fuel</span>
+                <span class="v"><span class="num r3" id="fuel-v">—</span><small>L</small></span>
+              </div>
+              <div class="pips" id="pips"></div>
+            </div>
+          </div>
+
+          <div class="mapwrap" id="map-slot">
+            <div class="map-rotor" id="map-rotor"><div id="gmap"></div></div>
+            <svg class="map-ovl" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+              <circle id="range-ring" cx="160" cy="100" r="0" fill="none" stroke-width="1" stroke-dasharray="5 4"/>
+              <circle cx="160" cy="100" r="15" fill="none" stroke="rgba(var(--neon-rgb),.18)" stroke-width="1"/>
+              <path class="mk-o" d="M 160 88 L 169 108 L 160 103 L 151 108 Z"/>
+              <path class="mk-i" d="M 160 90 L 167 106 L 160 102 L 153 106 Z"/>
+            </svg>
+            <div class="map-none" id="map-none">Map key not set</div>
+            <span class="chip warm" id="warm">Warm-up</span>
+            <span class="chip hole" id="holewarn">Rough road ahead</span>
+            <span class="chip tl">NAV <b id="hdg">—</b> · GPS <b id="lock">…</b></span>
+            <span class="chip bl obd" id="clt-chip">CLT <b id="clt">—</b></span>
+            <span class="chip br obd">RANGE <b id="range">—</b></span>
+          </div>
+        </div>
+
+        <!-- layers -->
+        <div class="layer layer-setup" id="layer-setup">
+          <div class="ltitle">NMAX DASH // SETUP</div>
+          <div class="lsub">Stored on this phone only. Nothing is uploaded.</div>
+          <div class="steps">
+            <div class="step">
+              <span class="n">1</span>
+              <span class="t">Location &amp; motion<i>Speed, heading, lean and jolt logging</i></span>
+              <button class="badge" id="grant-btn" type="button">Grant</button>
+            </div>
+            <div class="step">
+              <span class="n">2</span>
+              <span class="t">Google Maps key<i>Restricted to this address</i></span>
+              <input class="fld" id="map-key" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="AIza…" aria-label="Google Maps API key">
+            </div>
+            <div class="step">
+              <span class="n">3</span>
+              <span class="t">Spotify client ID<i>Optional — Premium needed to control</i></span>
+              <input class="fld" id="sp-id" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Client ID" aria-label="Spotify client ID">
+            </div>
+          </div>
+          <button class="crash-btn" id="setup-done" type="button">Start</button>
+        </div>
+
+        <div class="layer layer-settings" id="layer-settings">
+          <div class="ltitle">SETTINGS</div>
+          <div class="rows">
+            <div class="srow"><span class="t">Calibrate lean<i>Hold upright, then tap</i></span><button class="pill" id="cal-btn" type="button">Set zero</button></div>
+            <div class="srow"><span class="t">Invert lean<i>If the arc swings the wrong way</i></span><button class="sw" id="inv-sw" type="button" aria-pressed="false"></button></div>
+            <div class="srow"><span class="t">Keep screen awake<i>Wake lock while riding</i></span><button class="sw on" id="wake-sw" type="button" aria-pressed="true"></button></div>
+            <div class="srow"><span class="t">Crash detection<i>Prompts to text your contact</i></span><button class="sw on" id="crash-sw" type="button" aria-pressed="true"></button></div>
+            <div class="srow"><span class="t">Emergency contact<i>Phone number</i></span><input class="fld" id="ice-num" type="tel" inputmode="tel" placeholder="+63…" aria-label="Emergency contact number"></div>
+            <div class="srow"><span class="t">Speed limit<i>Soft warning above this</i></span><input class="fld sm" id="lim-in" type="number" min="20" max="140" step="5" aria-label="Speed limit"></div>
+            <div class="srow"><span class="t">Theme<i>Applies everywhere</i></span><span class="swatches" id="swatches"></span></div>
+            <div class="srow"><span class="t">Keys<i>Maps and Spotify</i></span><button class="pill" id="keys-btn" type="button">Edit</button></div>
+          </div>
+          <button class="crash-btn" id="set-close" type="button">Close</button>
+        </div>
+
+        <div class="layer layer-crash" id="layer-crash">
+          <div class="crash-t">IMPACT DETECTED</div>
+          <p class="crash-s">No movement since the hit. Opening a message to your contact in</p>
+          <div class="crash-n" id="crash-n">12</div>
+          <button class="crash-btn" id="crash-cancel" type="button">I'm OK — cancel</button>
+        </div>
+
+        <div class="layer layer-portrait">
+          <div class="rot"></div>
+          <div class="ltitle">ROTATE TO LANDSCAPE</div>
+          <div class="lsub" style="margin-inline:auto">The dash is built for a phone mounted sideways. Swipe left for logs, which read fine upright.</div>
+        </div>
+
+        <div class="vignette"></div>
+        <div class="scanlines"></div>
+      </div>
+    </section>
+
+    <!-- ===================== LOGS ===================== -->
+    <section class="pane pane-logs">
+      <div class="logs">
+        <header class="logs-top">
+          <span class="logs-title">LOGS</span>
+          <nav class="logs-tabs" role="tablist">
+            <button role="tab" data-tab="trips"   aria-selected="true"  type="button">Trips</button>
+            <button role="tab" data-tab="roads"   aria-selected="false" type="button">Roads</button>
+            <button role="tab" data-tab="health"  aria-selected="false" type="button">Health</button>
+            <button role="tab" data-tab="service" aria-selected="false" type="button">Service</button>
+          </nav>
+        </header>
+        <div class="logs-body">
+          <div class="tabpane on" data-tab="trips">
+            <div class="wk" id="wk"></div>
+            <div class="trips" id="trips"></div>
+          </div>
+          <div class="tabpane" data-tab="roads">
+            <div class="verdict" id="verdict"></div>
+            <div class="routes" id="routes"></div>
+            <h3 class="rsub">Worst sections logged</h3>
+            <div class="rough" id="rough"></div>
+          </div>
+          <div class="tabpane" data-tab="health">
+            <div class="empty">
+              <b>Needs the dongle.</b>
+              Belt wear reads the weekly median RPM at a steady 60 km/h, and battery health reads the
+              lowest voltage while the starter turns. Both come from OBD, so this tab stays empty until
+              an ELM327 is connected and the ECU answers.
+            </div>
+          </div>
+          <div class="tabpane" data-tab="service">
+            <div class="odo"><span class="k">Odometer</span><span class="v" id="odo">0<small>km</small></span></div>
+            <div class="svc" id="svc"></div>
+            <p class="svcnote">Intervals are editable defaults taken from commonly cited figures — confirm them
+              against your owner's manual before trusting them. The odometer counts only distance this app has
+              logged, so set a starting offset in settings if you want it to match the bike.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="dots" id="dots"><i class="on"></i><i></i></div>
+  <button class="gear" id="gear" type="button" aria-label="Settings">
+    <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9.4 4a7.4 7.4 0 01-.1 1.2l2 1.6-2 3.4-2.4-1a7.5 7.5 0 01-2 1.2L16.5 21h-4l-.4-2.6a7.5 7.5 0 01-2-1.2l-2.4 1-2-3.4 2-1.6a7.6 7.6 0 010-2.4l-2-1.6 2-3.4 2.4 1a7.5 7.5 0 012-1.2L12.5 3h4l.4 2.6a7.5 7.5 0 012 1.2l2.4-1 2 3.4-2 1.6c.06.4.1.8.1 1.2z"/></svg>
+  </button>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
