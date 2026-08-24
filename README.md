@@ -197,8 +197,20 @@ The magnifier on the map opens search. Two geocoders are tried in order:
 
 1. **Google Places** whenever a Maps key is set. Far better at businesses —
    the small, new and informally named places that are the whole point of
-   searching. Needs **Places API (New)** enabled on the same Cloud project;
-   it is a separate API from Maps JavaScript, and separately billed.
+   searching. It uses **the same key as the map**; there is no second key.
+
+   Two things have to be true on the Cloud project:
+   - **Places API (New)** enabled. Library → search *Places* → pick the entry
+     ending **(New)**, not the legacy *Places API*. They are different
+     products and only the new one accepts browser calls.
+   - The key's **API restrictions** must list it. Restricting the key to Maps
+     JavaScript API — which is the sensible thing to do — blocks Places until
+     it is added alongside.
+
+   Changes take a few minutes. Settings → diagnostics reports the **Places**
+   line: `ready`, or the refusal. `403 PERMISSION_DENIED` means the API is not
+   enabled or not on the key's allowed list; `403 REQUEST_DENIED` means the
+   referrer restriction does not match.
 2. **Nominatim** otherwise, or if the Places call fails. Free, no account,
    strong on streets, barangays and landmarks, thin on shops. Results carry an
    `osm` tag so a thin result set is explainable rather than mysterious.

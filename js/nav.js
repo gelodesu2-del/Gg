@@ -21,6 +21,12 @@ import { haversine } from "./sensors.js";
 
 const NOMINATIM = "https://nominatim.openstreetmap.org/search";
 const PLACES = "https://places.googleapis.com/v1/places:searchText";
+
+/* The fallback is silent on purpose while riding, which makes it useless while
+   setting up: every search quietly works and nobody can tell Places is not
+   answering. The last failure is kept so diagnostics can name it. */
+let lastPlacesError = null;
+export function placesStatus() { return lastPlacesError; }
 let dest = store.get("dest", null);
 
 export function destination() { return dest; }
@@ -91,9 +97,18 @@ async function placesSearch(q) {
       },
       body: JSON.stringify(body)
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      let why = "";
+      try {
+        const e = await res.json();
+        why = (e.error && (e.error.status || e.error.message)) || "";
+      } catch (_) { /* not JSON */ }
+      lastPlacesError = res.status + (why ? " " + String(why).slice(0, 80) : "");
+      return null;
+    }
     const j = await res.json();
-    if (!j.places) return null;
+    if (!j.places) { lastPlacesError = "no results field"; return null; }
+    lastPlacesError = null;
     return j.places.map((p) => ({
       label: (p.displayName && p.displayName.text) || shortName(p.formattedAddress || ""),
       full: p.formattedAddress || "",
@@ -102,6 +117,9 @@ async function placesSearch(q) {
       src: "g"
     }));
   } catch (e) {
+    // A CORS rejection surfaces here with no detail, and that is itself the
+    // signal: the key is not allowed to call this API.
+    lastPlacesError = "blocked (" + (e && e.name ? e.name : "network") + ")";
     return null;
   }
 }

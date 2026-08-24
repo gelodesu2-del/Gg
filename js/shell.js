@@ -254,6 +254,7 @@ export function init() {
     showMsg("Searching…");
     const hits = await nav.search(q);
     if (hits === null) { showMsg("Search failed — check the connection."); return; }
+    if (nav.placesStatus()) console.info("Places fell back:", nav.placesStatus());
     if (!hits.length) { showMsg("Nothing found near you."); return; }
     showResults(hits);
   });
@@ -387,6 +388,11 @@ function renderDiag() {
     (mapview.providerName() === "google" ? (settings.mapId ? " · vector" : " · raster, labels rotate") : "") +
     "<br><b>GPS</b> " + gps + " · <b>motion</b> " + (S.lean !== 0 || S.leanRaw !== 0 ? '<span class="ok">yes</span>' : "no movement seen") +
     "<br><b>Spotify</b> " + (S.spotify ? '<span class="ok">connected</span>' : "not connected") +
+    "<br><b>Places</b> " + (settings.mapKey
+      ? (nav.placesStatus()
+          ? '<span class="bad">' + escapeHtml(nav.placesStatus()) + "</span>"
+          : '<span class="ok">ready</span>')
+      : "no Maps key — using OpenStreetMap search") +
     "<br><b>Build</b> " + (window.__swVersion || "unknown") +
     "<br><b>Screen</b> " + innerWidth + "×" + innerHeight +
     " · dpr " + (devicePixelRatio || 1).toFixed(2) +
