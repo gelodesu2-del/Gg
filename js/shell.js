@@ -43,12 +43,58 @@ export function updateReady() {
   el.classList.add("on");
 }
 
-export function layer(name) {
-  document.querySelectorAll(".layer").forEach((l) => l.classList.toggle("on", l.id === "layer-" + name));
+/* ---------- back button ----------
+   Layers and the logs page each push a history entry when they open, so the
+   system back button (or gesture) pops them instead of leaving the app — the
+   WebView shell's goBack() lands here. The crash overlay is deliberately
+   exempt: dismissing that must be an explicit tap on its own buttons. */
+let layerPushed = false;
+let pagePushed = false;
+let suppressPop = false;
+
+function openLayers() {
+  const on = document.querySelector(".layer.on");
+  return on ? on.id.replace("layer-", "") : "";
 }
 
+export function layer(name) {
+  document.querySelectorAll(".layer").forEach((l) => l.classList.toggle("on", l.id === "layer-" + name));
+  if (name && name !== "crash") {
+    if (!layerPushed) { try { history.pushState({ nmax: "layer" }, ""); } catch (e) {} layerPushed = true; }
+  } else if (!name && layerPushed) {
+    layerPushed = false;
+    suppressPop = true;
+    try { history.back(); } catch (e) { suppressPop = false; }
+  }
+}
+
+window.addEventListener("popstate", () => {
+  if (suppressPop) { suppressPop = false; return; }
+  const open = openLayers();
+  if (open === "crash") {
+    // Put the entry back: back must not dismiss a crash prompt.
+    try { history.pushState({ nmax: "layer" }, ""); } catch (e) {}
+    return;
+  }
+  if (open) {
+    layerPushed = false;
+    document.querySelectorAll(".layer").forEach((l) => l.classList.remove("on"));
+    return;
+  }
+  if (page === 1) { pagePushed = false; goto(0); }
+});
+
 function goto(p) {
+  const prev = page;
   page = Math.max(0, Math.min(1, p));
+  if (page === 1 && prev !== 1 && !pagePushed) {
+    try { history.pushState({ nmax: "page" }, ""); } catch (e) {}
+    pagePushed = true;
+  } else if (page === 0 && prev === 1 && pagePushed) {
+    pagePushed = false;
+    suppressPop = true;
+    try { history.back(); } catch (e) { suppressPop = false; }
+  }
   $("pager").style.transform = "translateX(" + (-page * 100) + "%)";
   [...$("dots").children].forEach((d, i) => d.classList.toggle("on", i === page));
   // The native shell needs this to know what its back gesture should do.
@@ -116,7 +162,7 @@ export function init() {
     }));
 
   // ---- settings ----
-  $("gear").addEventListener("click", () => { syncSettings(); layer("settings"); });
+  $("gear").addEventListener("click", () => { if (page === 1) goto(0); syncSettings(); layer("settings"); });
   $("update").addEventListener("click", () => location.reload());
   $("set-close").addEventListener("click", () => layer(""));
   const recal = () => { sensors.calibrateLean(); sensors.resetPeaks(); toast("Lean zeroed — hold the bike upright when you do this"); };
@@ -433,6 +479,11 @@ function renderDiag() {
           ? '<span class="bad">' + escapeHtml(nav.placesStatus()) + "</span>"
           : '<span class="ok">ready</span>')
       : "no Maps key — using OpenStreetMap search") +
+    "<br><b>Directions</b> " + (mapview.providerName() !== "google"
+      ? "google map only"
+      : (mapview.routeStatus()
+          ? '<span class="bad">' + escapeHtml(mapview.routeStatus()) + "</span>"
+          : (mapview.routeInfo() ? '<span class="ok">routed</span>' : "no destination"))) +
     "<br><b>Build</b> " + (window.__swVersion || "unknown") +
     "<br><b>Screen</b> " + innerWidth + "×" + innerHeight +
     " · dpr " + (devicePixelRatio || 1).toFixed(2) +

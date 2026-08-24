@@ -50,6 +50,13 @@ export function restyle() {
   if (active && active.restyle) active.restyle();
 }
 
+export function routeInfo() {
+  return active && active.routeInfo ? active.routeInfo() : null;
+}
+export function routeStatus() {
+  return active && active.routeStatus ? active.routeStatus() : null;
+}
+
 export function setFollow(on) { if (active && active.setFollow) active.setFollow(on); }
 export function following() { return active && active.following ? active.following() : true; }
 

@@ -194,9 +194,99 @@ export function update(now) {
     lastCenter = now;
     map.setCenter({ lat: S.lat, lng: S.lng });
   }
+
+  // Leaving the line by more than ~150 m earns a fresh route. Checked at a
+  // walking pace of once per 20 s — Directions calls are billable.
+  if (routeDest && now - routeCheckAt > 20000) {
+    routeCheckAt = now;
+    if (!routePath && !dirError) requestRoute();          // first attempt failed on no-fix
+    else if (routePath && offRouteM() > 150) requestRoute();
+  }
 }
 
+/* ---------- routing ----------
+   The homing arrow says which way the destination lies; the route says which
+   roads get there. Drawn as our own themed polyline rather than Google's
+   DirectionsRenderer, which drags its default blue and its own markers in.
+   Needs the (legacy) Directions API enabled AND listed in the key's API
+   restrictions — the same trap Places fell into, so refusals are kept for
+   diagnostics instead of failing silently. */
+let dirSvc = null;
+let routeLine = null;
+let routeGlow = null;
+let routePath = null;
+let routeMeta = null;
+let routeDest = null;
+let routeCheckAt = 0;
+let dirError = null;
+
+function accent(a) {
+  let rgb = "0,245,140";
+  try { rgb = getComputedStyle(document.getElementById("app")).getPropertyValue("--neon-rgb").trim() || rgb; } catch (e) { /* default */ }
+  return a ? "rgba(" + rgb + "," + a + ")" : "rgb(" + rgb + ")";
+}
+
+function clearRoute() {
+  if (routeLine) { routeLine.setMap(null); routeLine = null; }
+  if (routeGlow) { routeGlow.setMap(null); routeGlow = null; }
+  routePath = null;
+  routeMeta = null;
+}
+
+function requestRoute() {
+  if (!map || !routeDest || S.lat === null) return;
+  if (!google.maps.DirectionsService) { dirError = "DirectionsService missing"; return; }
+  dirSvc = dirSvc || new google.maps.DirectionsService();
+  dirSvc.route({
+    origin: { lat: S.lat, lng: S.lng },
+    destination: { lat: routeDest.lat, lng: routeDest.lng },
+    travelMode: google.maps.TravelMode.DRIVING
+  }, (res, status) => {
+    if (status !== "OK" || !res.routes || !res.routes.length) {
+      dirError = String(status);          // REQUEST_DENIED = not on the key's allowed list
+      return;
+    }
+    dirError = null;
+    clearRoute();
+    const route = res.routes[0];
+    routePath = route.overview_path;
+    routeGlow = new google.maps.Polyline({
+      map, path: routePath, strokeColor: accent(".22"), strokeOpacity: 1, strokeWeight: 11, zIndex: 39, clickable: false
+    });
+    routeLine = new google.maps.Polyline({
+      map, path: routePath, strokeColor: accent(), strokeOpacity: .92, strokeWeight: 4.5, zIndex: 40, clickable: false
+    });
+    const leg = route.legs && route.legs[0];
+    routeMeta = leg ? {
+      m: leg.distance ? leg.distance.value : 0,
+      s: leg.duration ? leg.duration.value : 0
+    } : null;
+  });
+}
+
+/* Cheap planar distance in metres to the nearest route vertex — good enough
+   to know the rider has left the line. */
+function offRouteM() {
+  if (!routePath || S.lat === null) return 0;
+  const cosLat = Math.cos(S.lat * Math.PI / 180);
+  let best = Infinity;
+  for (let i = 0; i < routePath.length; i += 2) {
+    const p = routePath[i];
+    const dx = (p.lng() - S.lng) * 111320 * cosLat;
+    const dy = (p.lat() - S.lat) * 110540;
+    const d = dx * dx + dy * dy;
+    if (d < best) best = d;
+  }
+  return Math.sqrt(best);
+}
+
+export function routeInfo() { return routeMeta; }
+export function routeStatus() { return dirError; }
+
 export function setDestination(d) {
+  routeDest = d || null;
+  dirError = null;
+  clearRoute();
   if (!map || !window.google) return;
   if (destMarker) { destMarker.setMap(null); destMarker = null; }
   if (!d) return;
@@ -207,12 +297,15 @@ export function setDestination(d) {
       fillColor: "#FFB833", fillOpacity: 1, strokeColor: "#0A0C10", strokeWeight: 2
     }
   });
+  requestRoute();
 }
 
 /* Called when the theme changes. Vector maps take their styling from the
    cloud console, so only the raster path can follow the theme at runtime. */
 export function restyle() {
   if (map && !vector) map.setOptions({ styles: themeStyles() });
+  if (routeLine) routeLine.setOptions({ strokeColor: accent() });
+  if (routeGlow) routeGlow.setOptions({ strokeColor: accent(".22") });
 }
 
 export function usesCssRotor() { return !vector; }
