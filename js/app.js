@@ -151,7 +151,39 @@ async function boot() {
 
   // Installs the app to the home screen and keeps it opening without signal.
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    navigator.serviceWorker.register("./sw.js").then((reg) => {
+      // Without this the rider is always one launch behind: the cached copy
+      // renders instantly while the new one downloads behind it, and only the
+      // next cold start shows the change.
+      reg.addEventListener("updatefound", () => {
+        const fresh = reg.installing;
+        if (!fresh) return;
+        fresh.addEventListener("statechange", () => {
+          if (fresh.state === "installed" && navigator.serviceWorker.controller) {
+            shell.updateReady();
+          }
+        });
+      });
+      // Coming back to the app is the natural moment to look for one.
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") reg.update().catch(() => {});
+      });
+      setTimeout(() => reg.update().catch(() => {}), 4000);
+    }).catch(() => {});
+
+    navigator.serviceWorker.addEventListener("message", (e) => {
+      if (e.data && e.data.type === "version") window.__swVersion = e.data.cache;
+    });
+    // On a first visit there is no controller yet, so ask again once one
+    // takes over rather than reporting the build as unknown.
+    const askVersion = () => {
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ type: "version" });
+      }
+    };
+    askVersion();
+    navigator.serviceWorker.addEventListener("controllerchange", askVersion);
+    navigator.serviceWorker.ready.then(askVersion).catch(() => {});
   }
 }
 

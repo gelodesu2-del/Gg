@@ -354,6 +354,13 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .layer-portrait{align-items:center; text-align:center}
 .rot{width:7em; height:7em; border:.28em solid var(--neon); border-radius:.8em; margin-bottom:1.4em; opacity:.85}
 
+.update{
+  position:absolute; z-index:28; left:50%; bottom:2.4em; transform:translateX(-50%);
+  display:none; font-family:var(--f-mono); font-size:1.3em; letter-spacing:.12em;
+  padding:.75em 1.4em; background:rgba(4,5,8,.95); border:1px solid var(--gold);
+  color:var(--gold); cursor:pointer;
+}
+.update.on{display:block}
 .toast{position:absolute; z-index:30; left:50%; bottom:2.4em; transform:translateX(-50%);
   font-size:1.3em; letter-spacing:.1em; padding:.7em 1.3em; background:rgba(4,5,8,.94);
   border:1px solid var(--neon); color:var(--neon); opacity:0; pointer-events:none; transition:opacity .25s}

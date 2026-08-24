@@ -8,7 +8,7 @@
    Maps traffic must reach the network untouched — a cached playback state or a
    stale map tile is worse than no answer at all. */
 
-const CACHE = "nmax-v6";
+const CACHE = "nmax-v7";
 const FONT_HOSTS = ["https://fonts.googleapis.com", "https://fonts.gstatic.com"];
 
 const SHELL = [
@@ -27,6 +27,14 @@ self.addEventListener("install", (e) => {
       .then((c) => Promise.allSettled(SHELL.map((u) => c.add(u))))
       .then(() => self.skipWaiting())
   );
+});
+
+/* The page asks what is running so diagnostics can show it, and a bug report
+   can name a version rather than "the latest, I think". */
+self.addEventListener("message", (e) => {
+  if (e.data && e.data.type === "version" && e.source) {
+    e.source.postMessage({ type: "version", cache: CACHE });
+  }
 });
 
 self.addEventListener("activate", (e) => {

@@ -16,6 +16,12 @@
 /index.html
   Cache-Control: no-cache
 
+# If these are cached the app cannot learn that a new version exists.
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+
 # Modules are unversioned, so they cannot be cached hard either. An hour is
 # long enough to save the battery on repeat opens and short enough that a fix
 # lands the same ride.

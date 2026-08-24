@@ -35,6 +35,14 @@ export function toast(msg) {
   t._h = setTimeout(() => t.classList.remove("on"), 2600);
 }
 
+/* A tap target rather than a toast: an update the rider never notices is the
+   same as no update, and reloading mid-ride should be their choice. */
+export function updateReady() {
+  const el = $("update");
+  if (!el || el.classList.contains("on")) return;
+  el.classList.add("on");
+}
+
 export function layer(name) {
   document.querySelectorAll(".layer").forEach((l) => l.classList.toggle("on", l.id === "layer-" + name));
 }
@@ -103,6 +111,7 @@ export function init() {
 
   // ---- settings ----
   $("gear").addEventListener("click", () => { syncSettings(); layer("settings"); });
+  $("update").addEventListener("click", () => location.reload());
   $("set-close").addEventListener("click", () => layer(""));
   $("cal-btn").addEventListener("click", () => { sensors.calibrateLean(); toast("Lean zeroed"); });
   $("inv-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "invertLean"));
@@ -378,6 +387,7 @@ function renderDiag() {
     (mapview.providerName() === "google" ? (settings.mapId ? " · vector" : " · raster, labels rotate") : "") +
     "<br><b>GPS</b> " + gps + " · <b>motion</b> " + (S.lean !== 0 || S.leanRaw !== 0 ? '<span class="ok">yes</span>' : "no movement seen") +
     "<br><b>Spotify</b> " + (S.spotify ? '<span class="ok">connected</span>' : "not connected") +
+    "<br><b>Build</b> " + (window.__swVersion || "unknown") +
     "<br><b>Screen</b> " + innerWidth + "×" + innerHeight +
     " · dpr " + (devicePixelRatio || 1).toFixed(2) +
     " · " + (innerWidth / innerHeight).toFixed(2) + ":1" +

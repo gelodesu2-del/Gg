@@ -230,6 +230,26 @@ Tuned for a **OnePlus 12** (3168×1440, 2.20:1, curved edges, 120 Hz):
 - The fast loop is capped near 60 fps. A 120 Hz panel would otherwise run it
   twice as often for motion no rider can see, at twice the battery.
 
+### Updating
+
+Push to the branch and Cloudflare rebuilds on its own. What happens on the
+phone after that:
+
+The service worker serves the cached copy immediately and fetches the new one
+behind it, so the dash never waits on the network to open. When the new build
+finishes downloading, an **Update ready · tap to reload** banner appears at the
+bottom. Tap it and you are on the new version; ignore it and the next cold
+start picks it up anyway.
+
+It checks whenever the app comes back to the foreground, and once a few seconds
+after launch. Settings → diagnostics reports which build is running, so a bug
+report can name a version.
+
+**The APK does not need reinstalling for this.** It is a shell around the live
+URL, so web changes arrive through exactly the same path. Only a change to the
+native shell itself — permissions, the URL it opens, orientation, the launcher
+icon — needs a new APK, and those almost never change.
+
 ### Troubleshooting
 
 Settings has a **diagnostics** block reporting which font is in use, the map
