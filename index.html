@@ -140,10 +140,33 @@
             <div class="srow"><span class="t">Invert lean<i>If the arc swings the wrong way</i></span><button class="sw" id="inv-sw" type="button" aria-pressed="false"></button></div>
             <div class="srow"><span class="t">Keep screen awake<i>Wake lock while riding</i></span><button class="sw on" id="wake-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Crash detection<i>Prompts to text your contact</i></span><button class="sw on" id="crash-sw" type="button" aria-pressed="true"></button></div>
-            <div class="srow"><span class="t">Emergency contact<i>Phone number</i></span><input class="fld" id="ice-num" type="tel" inputmode="tel" placeholder="+63…" aria-label="Emergency contact number"></div>
             <div class="srow"><span class="t">Speed limit<i>Soft warning above this</i></span><input class="fld sm" id="lim-in" type="number" min="20" max="140" step="5" aria-label="Speed limit"></div>
             <div class="srow"><span class="t">Theme<i>Applies everywhere</i></span><span class="swatches" id="swatches"></span></div>
             <div class="srow"><span class="t">Keys<i>Maps and Spotify</i></span><button class="pill" id="keys-btn" type="button">Edit</button></div>
+
+            <div class="sos">
+              <div class="sos-head">
+                <span class="t">Emergency contacts<i>Up to three. The first is the one that always gets it.</i></span>
+                <span class="sos-act">
+                  <button class="pill" id="ice-pick" type="button">From contacts</button>
+                  <button class="pill" id="ice-add" type="button">Add manually</button>
+                </span>
+              </div>
+              <div class="ice-list" id="ice-list"></div>
+              <div class="ice-manual" id="ice-manual" hidden>
+                <input class="fld" id="ice-name" type="text" placeholder="Name" autocomplete="off" aria-label="Contact name">
+                <input class="fld" id="ice-tel" type="tel" inputmode="tel" placeholder="+63…" autocomplete="off" aria-label="Contact number">
+                <button class="pill" id="ice-save" type="button">Save</button>
+              </div>
+              <label class="ice-msg">
+                <span class="t">Message<i>{link} is replaced with your position</i></span>
+                <input class="fld" id="ice-tpl" type="text" aria-label="Emergency message">
+              </label>
+              <div class="sos-foot">
+                <button class="pill" id="ice-test" type="button">Send test message</button>
+                <span class="sos-note" id="ice-note"></span>
+              </div>
+            </div>
           </div>
           <button class="crash-btn" id="set-close" type="button">Close</button>
         </div>

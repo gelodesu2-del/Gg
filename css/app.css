@@ -204,6 +204,27 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .sw::after{content:""; position:absolute; top:.2em; left:.2em; width:1.1em; height:1.1em; background:var(--ink-3)}
 .sw.on{border-color:var(--neon); background:rgba(var(--neon-rgb),.12)}
 .sw.on::after{left:auto; right:.2em; background:var(--neon); box-shadow:0 0 .6em var(--neon)}
+.sos{grid-column:1/-1; border:1px solid var(--edge); background:var(--panel); padding:.9em 1.1em; margin-top:.6em}
+.sos-head{display:flex; align-items:flex-start; justify-content:space-between; gap:1em; flex-wrap:wrap}
+.sos-head .t{font-size:1.35em; color:var(--ink)}
+.sos-head .t i{display:block; font-style:normal; font-size:.75em; color:var(--ink-3); margin-top:.1em}
+.sos-act{display:flex; gap:.4em; flex-wrap:wrap}
+.ice-list{display:grid; gap:.4em; margin-top:.8em}
+.ice-row{display:flex; align-items:center; gap:.9em; border:1px solid var(--edge); background:#0B0E13; padding:.55em .8em}
+.ice-row .nm{font-size:1.3em; color:var(--ink); flex:none; min-width:8em}
+.ice-row .tel{font-size:1.2em; color:var(--ink-2); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis}
+.ice-row .pri{font-size:1em; letter-spacing:.14em; text-transform:uppercase; color:var(--neon); border:1px solid rgba(var(--neon-rgb),.4); padding:.15em .5em}
+.ice-row .rm{background:transparent; border:0; color:var(--ink-3); font-size:1.5em; line-height:1; cursor:pointer; padding:0 .3em}
+.ice-row .rm:active{color:var(--red)}
+.ice-none{font-size:1.2em; color:var(--gold); padding:.5em .1em}
+.ice-manual{display:flex; gap:.5em; margin-top:.6em; flex-wrap:wrap}
+.ice-manual .fld{flex:1; min-width:8em}
+.ice-msg{display:block; margin-top:.9em}
+.ice-msg .t{font-size:1.25em; color:var(--ink-2)}
+.ice-msg .t i{font-style:normal; color:var(--ink-3); margin-left:.5em}
+.ice-msg .fld{margin-top:.35em}
+.sos-foot{display:flex; align-items:center; gap:1em; margin-top:.9em; flex-wrap:wrap}
+.sos-note{font-size:1.15em; color:var(--ink-3); flex:1; min-width:12em; line-height:1.45}
 .pill{font-family:var(--f-mono); font-size:1.2em; letter-spacing:.14em; text-transform:uppercase; color:var(--neon);
   border:1px solid rgba(var(--neon-rgb),.4); background:transparent; padding:.35em .8em; cursor:pointer}
 .swatches{display:flex; gap:.4em}

@@ -8,6 +8,7 @@ import * as sensors from "./sensors.js";
 import * as trips from "./trips.js";
 import * as spotify from "./spotify.js";
 import * as gmap from "./gmap.js";
+import * as sos from "./sos.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -18,15 +19,11 @@ let decelPeak = 0;
 
 sensors.setJoltHandler((hit) => trips.noteJolt(hit));
 
-/* Crash detection.
-
-   A web app cannot send an SMS on its own — no API exists for it, on any
-   platform. What this does is detect the impact, give you twelve seconds to
-   cancel, then open your messaging app with the location already written. You
-   still tap send. A genuinely automatic alert needs a webhook, which is a
-   different piece of plumbing and a decision for later. */
+/* Crash detection. Detects the impact, gives twelve seconds to cancel, then
+   hands a composed message to the messaging app — see sos.js for why that last
+   step cannot be automatic. Does nothing at all with no contact assigned. */
 function crashWatch(now) {
-  if (!settings.crashDetect || !settings.iceNumber) return;
+  if (!settings.crashDetect || !sos.contacts().length) return;
 
   if (S.accel < -CFG.crashDecel / 9.81) decelPeak = now;
 
@@ -52,10 +49,7 @@ function crashWatch(now) {
       stillSince = 0;
       decelPeak = 0;
       shell.layer("");
-      const where = S.lat === null ? "location unknown"
-        : "https://maps.google.com/?q=" + S.lat.toFixed(5) + "," + S.lng.toFixed(5);
-      location.href = "sms:" + encodeURIComponent(settings.iceNumber) +
-        "?body=" + encodeURIComponent("I may have crashed. Last known position: " + where);
+      sos.send(sos.compose(S.lat, S.lng));
     }
   }
 }

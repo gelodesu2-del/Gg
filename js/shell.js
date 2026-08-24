@@ -6,6 +6,7 @@ import * as logs from "./logs.js";
 import * as sensors from "./sensors.js";
 import * as spotify from "./spotify.js";
 import * as gmap from "./gmap.js";
+import * as sos from "./sos.js";
 
 const $ = (id) => document.getElementById(id);
 const THEMES = [
@@ -105,9 +106,43 @@ export function init() {
   $("inv-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "invertLean"));
   $("crash-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "crashDetect"));
   $("wake-sw").addEventListener("click", (e) => { const on = togSwitch(e.currentTarget, "wakeLock"); wake(on); });
-  $("ice-num").addEventListener("change", (e) => save({ iceNumber: e.target.value.trim() }));
   $("lim-in").addEventListener("change", (e) => save({ speedLimit: Math.max(20, Math.min(140, +e.target.value || 60)) }));
   $("keys-btn").addEventListener("click", () => { layer("setup"); syncSetup(); });
+
+  // ---- emergency contacts ----
+  $("ice-pick").addEventListener("click", async () => {
+    const c = await sos.pick();
+    if (!c) { toast(sos.pickerSupported() ? "No contact chosen" : "Picker unavailable — add manually"); return; }
+    toast(sos.addContact(c) ? "Added " + c.name : "Already listed, or list full");
+    renderContacts();
+  });
+  $("ice-add").addEventListener("click", () => {
+    const box = $("ice-manual");
+    box.hidden = !box.hidden;
+    if (!box.hidden) $("ice-name").focus();
+  });
+  $("ice-save").addEventListener("click", () => {
+    const ok = sos.addContact({ name: $("ice-name").value, tel: $("ice-tel").value });
+    if (!ok) { toast("Need a number, and room on the list"); return; }
+    $("ice-name").value = ""; $("ice-tel").value = "";
+    $("ice-manual").hidden = true;
+    renderContacts();
+  });
+  $("ice-list").addEventListener("click", (e) => {
+    const btn = e.target.closest(".rm");
+    if (!btn) return;
+    sos.removeContact(btn.dataset.tel);
+    renderContacts();
+  });
+  $("ice-tpl").addEventListener("change", (e) => {
+    const v = e.target.value.trim();
+    save({ smsTemplate: v || undefined });
+    if (!v) e.target.value = sos.template();
+  });
+  $("ice-test").addEventListener("click", () => {
+    if (!sos.contacts().length) { toast("Assign a contact first"); return; }
+    sos.send(sos.compose(S.lat, S.lng, { test: true }));
+  });
 
   // ---- setup ----
   $("grant-btn").addEventListener("click", async (e) => {
@@ -161,8 +196,32 @@ function syncSettings() {
   $("inv-sw").classList.toggle("on", settings.invertLean);
   $("crash-sw").classList.toggle("on", settings.crashDetect);
   $("wake-sw").classList.toggle("on", settings.wakeLock);
-  $("ice-num").value = settings.iceNumber || "";
   $("lim-in").value = settings.speedLimit;
+  $("ice-tpl").value = sos.template();
+  $("ice-pick").hidden = !sos.pickerSupported();
+  renderContacts();
+}
+
+function renderContacts() {
+  const list = sos.contacts();
+  $("ice-list").innerHTML = list.length
+    ? list.map((c, i) =>
+        '<div class="ice-row"><span class="nm">' + escapeHtml(c.name) + "</span>" +
+        '<span class="tel">' + escapeHtml(c.tel) + "</span>" +
+        (i === 0 ? '<span class="pri">first</span>' : "") +
+        '<button class="rm" type="button" data-tel="' + escapeHtml(c.tel) +
+        '" aria-label="Remove ' + escapeHtml(c.name) + '">&times;</button></div>').join("")
+    : '<div class="ice-none">No contact assigned — crash detection has nobody to message.</div>';
+
+  $("ice-note").textContent = !list.length
+    ? "Assign at least one."
+    : sos.pickerSupported()
+      ? "Sends to all " + list.length + ", though some messaging apps take only the first."
+      : "This browser has no contact picker, so numbers are entered by hand.";
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 }
 
 function syncSetup() {

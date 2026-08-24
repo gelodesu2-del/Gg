@@ -32,7 +32,8 @@ const defaults = {
   invertLean: false,
   wakeLock: true,
   crashDetect: true,
-  iceNumber: "",
+  contacts: [],
+  smsTemplate: "I may have crashed. Last known position: {link}",
   speedLimit: 60,
   mapKey: "",
   spotifyId: "",
@@ -41,6 +42,14 @@ const defaults = {
 };
 
 export const settings = Object.assign({}, defaults, store.get("settings", {}));
+
+/* An earlier build stored a single bare number. Fold it into the list so the
+   setting is not silently lost on upgrade. */
+if (settings.iceNumber && !settings.contacts.length) {
+  settings.contacts = [{ name: "Emergency contact", tel: settings.iceNumber }];
+  delete settings.iceNumber;
+  store.set("settings", settings);
+}
 
 export function save(patch) {
   Object.assign(settings, patch);
