@@ -12,6 +12,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Share+Tech+Mono&display=swap">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23040507'/%3E%3Cpath d='M6 20h20M10 20a3 3 0 106 0 3 3 0 10-6 0M18 20a3 3 0 106 0 3 3 0 10-6 0' stroke='%2300F58C' stroke-width='2' fill='none'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -74,7 +76,7 @@
                     <line x1="100" y1="22" x2="100" y2="10" stroke="#F2F6FA" stroke-width="2.2" stroke-linecap="round"/>
                   </g>
                   <circle cx="100" cy="80" r="2.6" fill="#F2F6FA"/>
-                  <text x="100" y="67" id="lean-val"  fill="#E7EBF0" font-family="Orbitron,sans-serif" font-size="31" font-weight="700" text-anchor="middle">00°</text>
+                  <text x="100" y="67" id="lean-val"  fill="#E7EBF0" font-size="31" font-weight="700" text-anchor="middle">00°</text>
                   <text x="100" y="79" id="lean-side" fill="#616974" font-family="Share Tech Mono,monospace" font-size="9" letter-spacing="1.8" text-anchor="middle">UPRIGHT</text>
                   <text x="14"  y="88" id="peak-l" fill="#5A6470" font-family="Share Tech Mono,monospace" font-size="10" text-anchor="start">L 00</text>
                   <text x="186" y="88" id="peak-r" fill="#5A6470" font-family="Share Tech Mono,monospace" font-size="10" text-anchor="end">R 00</text>
@@ -142,8 +144,11 @@
             <div class="srow"><span class="t">Crash detection<i>Prompts to text your contact</i></span><button class="sw on" id="crash-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Speed limit<i>Soft warning above this</i></span><input class="fld sm" id="lim-in" type="number" min="20" max="140" step="5" aria-label="Speed limit"></div>
             <div class="srow"><span class="t">Theme<i>Applies everywhere</i></span><span class="swatches" id="swatches"></span></div>
+            <div class="srow"><span class="t">Numerals<i>Switch if the digits show as empty boxes</i></span><button class="pill" id="font-btn" type="button">Auto</button></div>
             <div class="srow"><span class="t">Screen effects<i>Scanlines and glow. Turn off if the dash stutters.</i></span><button class="sw on" id="fx-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Keys<i>Maps and Spotify</i></span><button class="pill" id="keys-btn" type="button">Edit</button></div>
+
+            <div class="diag" id="diag">Diagnostics…</div>
 
             <div class="sos">
               <div class="sos-head">

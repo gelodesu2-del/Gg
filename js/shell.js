@@ -106,6 +106,15 @@ export function init() {
   $("inv-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "invertLean"));
   $("crash-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "crashDetect"));
   $("wake-sw").addEventListener("click", (e) => { const on = togSwitch(e.currentTarget, "wakeLock"); wake(on); });
+  $("font-btn").addEventListener("click", (e) => {
+    const order = ["auto", "orbitron", "safe"];
+    const next = order[(order.indexOf(settings.numeralFont) + 1) % order.length];
+    save({ numeralFont: next });
+    e.currentTarget.textContent = next === "auto" ? "Auto" : next === "safe" ? "Safe" : "Orbitron";
+    dash.verifyNumerals(next);
+    dash.calibrateDigits();
+    renderDiag();
+  });
   $("fx-sw").addEventListener("click", (e) => {
     $("app").dataset.fx = togSwitch(e.currentTarget, "effects") ? "on" : "off";
   });
@@ -217,16 +226,39 @@ function togSwitch(el, key) {
   return on;
 }
 
+/* Turns "it looks wrong" into something reportable, since none of this is
+   visible from a phone without devtools attached. */
+function renderDiag() {
+  const app = $("app");
+  const fontOk = app.dataset.font === "orbitron";
+  const cs = getComputedStyle(document.documentElement);
+  const mapEl = $("map-none");
+  const mapState = $("map-slot").classList.contains("live")
+    ? '<span class="ok">live</span>'
+    : '<span class="bad">' + (mapEl.textContent || "not loaded").slice(0, 60) + "</span>";
+  const gps = S.gpsOk ? '<span class="ok">lock</span>' : '<span class="bad">none</span>';
+  $("diag").innerHTML =
+    "<b>Numerals</b> " + (fontOk ? '<span class="ok">Orbitron</span>' : '<span class="bad">fallback — Orbitron did not load</span>') +
+    " · <b>digit</b> " + cs.getPropertyValue("--dw").trim() +
+    "<br><b>Map</b> " + mapState +
+    "<br><b>GPS</b> " + gps + " · <b>motion</b> " + (S.lean !== 0 || S.leanRaw !== 0 ? '<span class="ok">yes</span>' : "no movement seen") +
+    "<br><b>Spotify</b> " + (S.spotify ? '<span class="ok">connected</span>' : "not connected") +
+    "<br><b>Screen</b> " + innerWidth + "×" + innerHeight;
+}
+
 function syncSettings() {
   $("inv-sw").classList.toggle("on", settings.invertLean);
   $("crash-sw").classList.toggle("on", settings.crashDetect);
   $("wake-sw").classList.toggle("on", settings.wakeLock);
   $("fx-sw").classList.toggle("on", settings.effects);
+  $("font-btn").textContent = settings.numeralFont === "auto" ? "Auto"
+    : settings.numeralFont === "safe" ? "Safe" : "Orbitron";
   $("lim-in").value = settings.speedLimit;
   $("ice-tpl").value = sos.template();
   $("ice-pick").hidden = !sos.pickerSupported();
   renderChannels();
   renderContacts();
+  renderDiag();
 }
 
 function renderChannels() {

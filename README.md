@@ -109,11 +109,33 @@ prefill a message to a given number — `chat?number=` opens the thread but
 drops the text, so the app uses `forward?text=`, which keeps the message that
 matters and costs one tap to choose who gets it.
 
-### 5. On the phone
+### 5. Install it
 
-Open the address in Chrome, paste both keys into the setup screen, grant
-location and motion, then **Add to Home Screen**. It opens fullscreen with no
-browser chrome.
+Open the address in Chrome on the phone. Menu → **Install app** (or *Add to
+Home Screen*). It installs as a real app: its own icon and name in the
+launcher, its own window in the app switcher, fullscreen with no browser
+chrome, locked to landscape, and a service worker that keeps it opening
+without signal.
+
+That is a Progressive Web App rather than an APK. A packaged APK would need
+Android build tooling and a signing key; for a single rider the installed PWA
+behaves the same day to day.
+
+Then paste both keys into the setup screen and grant location and motion.
+
+### Troubleshooting
+
+Settings has a **diagnostics** block reporting which font is in use, the map
+state, GPS lock and screen size — everything otherwise invisible on a phone
+with no devtools attached.
+
+- **Map shows "For development purposes only"** — billing is not enabled on the
+  Google Cloud project. The map degrades to a watermarked, unstyled version
+  until a billing account is attached.
+- **Digits show as empty boxes** — the webfont resolved without its glyphs.
+  Settings → **Numerals** → *Safe* switches to a face that is already working.
+  *Auto* measures at boot and picks on its own.
+- **The dash stutters** — Settings → **Screen effects** off.
 
 ---
 

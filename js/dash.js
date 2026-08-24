@@ -48,9 +48,43 @@ export function readTheme() {
 
 /* Orbitron has proportional digits, so each character gets a box sized to the
    widest glyph the loaded font actually has, measured rather than guessed. */
+/* Orbitron rendered as notdef boxes on a real phone — the family resolved but
+   no glyphs came with it. Rather than trust that it loaded, check, and switch
+   the whole app to a face we have seen work if it did not. */
+export function verifyNumerals(force) {
+  // document.fonts.check reports true whenever the family is merely declared,
+  // which it was on the phone that rendered notdef boxes. Measuring is the
+  // only reliable signal: if a string of digits comes out exactly as wide as
+  // the generic fallback, the face never actually took.
+  let ok = false;
+  try {
+    const probe = document.createElement("span");
+    probe.style.cssText = "position:absolute;left:-9999px;top:0;white-space:pre;font-size:100px";
+    probe.textContent = "0123456789";
+    document.body.appendChild(probe);
+    probe.style.fontFamily = "monospace";
+    const base = probe.getBoundingClientRect().width;
+    probe.style.fontFamily = '"Orbitron", monospace';
+    const test = probe.getBoundingClientRect().width;
+    probe.remove();
+    ok = Math.abs(test - base) > 1 && test > 0;
+  } catch (e) {
+    ok = false;
+  }
+  // Detecting a font that loads but renders blanks is not reliably possible,
+  // so the setting can override this either way.
+  if (force === "safe") ok = false;
+  if (force === "orbitron") ok = true;
+  document.getElementById("app").dataset.font = ok ? "orbitron" : "fallback";
+  return ok;
+}
+
 export function calibrateDigits() {
+  const fam = document.getElementById("app").dataset.font === "fallback"
+    ? getComputedStyle(document.documentElement).getPropertyValue("--f-num-safe")
+    : "Orbitron, sans-serif";
   const probe = document.createElement("span");
-  probe.style.cssText = "position:absolute;left:-9999px;top:0;white-space:pre;font-family:Orbitron,sans-serif;font-size:200px";
+  probe.style.cssText = "position:absolute;left:-9999px;top:0;white-space:pre;font-size:200px;font-family:" + fam;
   document.body.appendChild(probe);
   const widest = (w) => {
     probe.style.fontWeight = w;

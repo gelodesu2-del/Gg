@@ -87,10 +87,13 @@ async function boot() {
   dash.build();
   shell.init();
 
+  const settle = () => { dash.verifyNumerals(settings.numeralFont); dash.calibrateDigits(); };
+  settle();
   if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(dash.calibrateDigits).catch(() => dash.calibrateDigits());
-  } else {
-    dash.calibrateDigits();
+    document.fonts.ready.then(settle).catch(settle);
+    // A slow font can land after fonts.ready resolves; one late re-check is
+    // cheaper than shipping a dash full of notdef boxes.
+    setTimeout(settle, 2500);
   }
 
   const returned = await spotify.handleRedirect();
@@ -111,6 +114,11 @@ async function boot() {
 
   // A trip left open by a hard close should not swallow the next one.
   window.addEventListener("pagehide", () => trips.close());
+
+  // Installs the app to the home screen and keeps it opening without signal.
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
 }
 
 boot();

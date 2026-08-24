@@ -10,7 +10,11 @@
   --ground:#040507; --panel:#0A0C10; --edge:#1C2027; --off:#12151B;
   --ink:#E7EBF0; --ink-2:#8A929D; --ink-3:#616974;
   --f-mono:"Share Tech Mono", ui-monospace, monospace;
-  --f-num:"Orbitron", ui-sans-serif, system-ui, sans-serif;
+  --f-num:"Orbitron", "Share Tech Mono", ui-sans-serif, system-ui, sans-serif;
+  /* Verified at boot. If Orbitron did not actually load, numerals fall back to
+     the face we know rendered — a missing display font must not turn the speed
+     into notdef boxes, which is exactly what it did on a real phone. */
+  --f-num-safe:"Share Tech Mono", ui-monospace, monospace;
   /* filled in by the theme block below */
   --dw:.66em; --dw8:.68em; --dotw:.34em;
 }
@@ -35,6 +39,21 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 }
 
 /* ---------- stable numerals ---------- */
+#app[data-font="fallback"] .speed,
+#app[data-font="fallback"] .cell .v,
+#app[data-font="fallback"] .fuel-head .v,
+#app[data-font="fallback"] .logs-title,
+#app[data-font="fallback"] .wkc .v,
+#app[data-font="fallback"] .trip .dist,
+#app[data-font="fallback"] .rscore,
+#app[data-font="fallback"] .odo .v,
+#app[data-font="fallback"] .crash-t,
+#app[data-font="fallback"] .crash-n,
+#app[data-font="fallback"] .step .n{font-family:var(--f-num-safe)}
+/* SVG text picks the family up from here rather than a hardcoded attribute. */
+#lean-val{font-family:var(--f-num)}
+#app[data-font="fallback"] #lean-val{font-family:var(--f-num-safe)}
+
 .num{display:inline-flex; align-items:baseline}
 .num i{display:inline-block; font-style:normal; text-align:center; width:var(--dw)}
 .num i[data-c="."]{width:var(--dotw)}
@@ -214,6 +233,12 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .sw::after{content:""; position:absolute; top:.2em; left:.2em; width:1.1em; height:1.1em; background:var(--ink-3)}
 .sw.on{border-color:var(--neon); background:rgba(var(--neon-rgb),.12)}
 .sw.on::after{left:auto; right:.2em; background:var(--neon); box-shadow:0 0 .6em var(--neon)}
+.diag{grid-column:1/-1; border:1px solid var(--edge); background:#0B0E13; padding:.7em .9em; margin-top:.5em;
+  font-size:1.15em; color:var(--ink-3); line-height:1.7; word-break:break-word}
+.diag b{color:var(--ink-2); font-weight:400}
+.diag .ok{color:var(--neon)}
+.diag .bad{color:var(--gold)}
+
 .sos{grid-column:1/-1; border:1px solid var(--edge); background:var(--panel); padding:.9em 1.1em; margin-top:.6em}
 .sos-head{display:flex; align-items:flex-start; justify-content:space-between; gap:1em; flex-wrap:wrap}
 .sos-head .t{font-size:1.35em; color:var(--ink)}
