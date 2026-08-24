@@ -214,12 +214,27 @@ export function init() {
   $("m-prev").addEventListener("click", async () => { await spotify.prev(); setTimeout(spotify.poll, 400); });
 
   // ---- destination search ----
-  $("search-btn").addEventListener("click", () => { layer("search"); showResults(nav.recents(), true); $("s-input").focus(); });
+  $("search-btn").addEventListener("click", () => { layer("search"); showResults(null); $("s-input").focus(); });
   $("s-close").addEventListener("click", () => layer(""));
+  $("s-pinhere").addEventListener("click", () => {
+    if (S.lat === null) { toast("No GPS fix yet"); return; }
+    $("s-pinbar").hidden = false;
+    $("s-pinname").value = "";
+    $("s-pinname").focus();
+  });
+  $("s-pincancel").addEventListener("click", () => { $("s-pinbar").hidden = true; });
+  $("s-pinsave").addEventListener("click", () => {
+    const label = $("s-pinname").value.trim();
+    if (!label) { toast("Give it a name"); return; }
+    const ok = nav.addPin({ label, lat: S.lat, lng: S.lng });
+    $("s-pinbar").hidden = true;
+    toast(ok ? "Pinned " + label : "Already pinned, or the list is full");
+    showResults(null);
+  });
   $("s-clear").addEventListener("click", () => {
     nav.clear();
     mapview.setDestination(null);
-    showResults(nav.recents(), true);
+    showResults(null);
     syncNav();
     toast("Destination cleared");
   });
@@ -231,9 +246,18 @@ export function init() {
     const hits = await nav.search(q);
     if (hits === null) { showMsg("Search failed — check the connection."); return; }
     if (!hits.length) { showMsg("Nothing found near you."); return; }
-    showResults(hits, false);
+    showResults(hits);
   });
   $("s-results").addEventListener("click", (e) => {
+    const pinBtn = e.target.closest(".pin");
+    if (pinBtn) {
+      e.stopPropagation();
+      const d = JSON.parse(pinBtn.closest(".s-row").dataset.d);
+      if (nav.isPinned(d)) { nav.removePin(d.lat, d.lng); toast("Unpinned"); }
+      else { toast(nav.addPin(d) ? "Pinned " + d.label : "Pin list is full"); }
+      showResults(lastHits);
+      return;
+    }
     const row = e.target.closest(".s-row");
     if (!row) return;
     const d = JSON.parse(row.dataset.d);
@@ -283,14 +307,34 @@ function showMsg(text) {
   $("s-results").innerHTML = '<div class="s-msg">' + escapeHtml(text) + "</div>";
 }
 
-function showResults(list, isRecent) {
-  if (!list.length) { showMsg(isRecent ? "No recent destinations yet." : "Nothing found."); return; }
-  $("s-results").innerHTML = list.map((d) => {
+let lastHits = null;
+
+const PIN_SVG = '<svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1112 6a2.5 2.5 0 010 5.5z"/></svg>';
+
+/* Passing null shows the standing lists — pins first, then recents. Passing a
+   result set shows that instead, with pins still reachable by their toggles. */
+function showResults(hits) {
+  lastHits = hits;
+  const rows = (list, cls) => list.map((d) => {
     const km = S.lat === null ? "" : '<span class="km">' + nav.fmtDistance(haversineTo(d)) + "</span>";
-    return '<button class="s-row" type="button" data-d=\'' + escapeHtml(JSON.stringify(d)) + '\'>' +
+    const on = nav.isPinned(d) ? " on" : "";
+    return '<button class="s-row" type="button" data-d=\'' + escapeHtml(JSON.stringify({ label: d.label, lat: d.lat, lng: d.lng })) + '\'>' +
       '<span class="nm">' + escapeHtml(d.label) + "</span>" + km +
-      (isRecent ? '<span class="rc">recent</span>' : "") + "</button>";
+      '<span class="pin' + on + '" role="button" aria-label="Pin">' + PIN_SVG + "</span></button>";
   }).join("");
+
+  if (hits) {
+    $("s-results").innerHTML = hits.length
+      ? '<div class="s-sec">Results</div>' + rows(hits)
+      : '<div class="s-msg">Nothing found.</div>';
+    return;
+  }
+
+  const pins = nav.pins(), rec = nav.recents().filter((r) => !nav.isPinned(r));
+  let html = "";
+  if (pins.length) html += '<div class="s-sec">Pinned</div>' + rows(pins);
+  if (rec.length) html += '<div class="s-sec">Recent</div>' + rows(rec);
+  $("s-results").innerHTML = html || '<div class="s-msg">No pins yet. Search for a place, or tap Pin here to save where you are.</div>';
 }
 
 function haversineTo(d) {
@@ -336,6 +380,7 @@ function renderDiag() {
     "<br><b>Screen</b> " + innerWidth + "×" + innerHeight +
     " · dpr " + (devicePixelRatio || 1).toFixed(2) +
     " · " + (innerWidth / innerHeight).toFixed(2) + ":1" +
+    "<br><b>Installed</b> " + (app.dataset.installed === "yes" ? '<span class="ok">yes</span>' : '<span class="bad">no — browser chrome is over the dash</span>') +
     "<br><b>Edge</b> " + settings.edgeInset + " · <b>refresh</b> " + (window.__hz || "?") + " Hz";
 }
 

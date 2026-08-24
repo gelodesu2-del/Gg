@@ -33,6 +33,27 @@ export function setDestination(d) {
 export function clear() { dest = null; store.del("dest"); }
 export function recents() { return store.get("recents", []); }
 
+/* Pins are places kept on purpose, as opposed to recents, which are just the
+   last few things searched. They survive clearing a destination. */
+export function pins() { return store.get("pins", []); }
+
+export function addPin(d) {
+  const list = pins();
+  if (list.some((p) => Math.abs(p.lat - d.lat) < 1e-5 && Math.abs(p.lng - d.lng) < 1e-5)) return false;
+  if (list.length >= 12) return false;
+  list.unshift({ label: (d.label || "Pin").trim().slice(0, 32), lat: d.lat, lng: d.lng, pinned: true });
+  store.set("pins", list);
+  return true;
+}
+
+export function removePin(lat, lng) {
+  store.set("pins", pins().filter((p) => !(Math.abs(p.lat - lat) < 1e-5 && Math.abs(p.lng - lng) < 1e-5)));
+}
+
+export function isPinned(d) {
+  return pins().some((p) => Math.abs(p.lat - d.lat) < 1e-5 && Math.abs(p.lng - d.lng) < 1e-5);
+}
+
 export async function search(query) {
   const q = query.trim();
   if (q.length < 3) return [];

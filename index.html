@@ -203,9 +203,15 @@
                    spellcheck="false" placeholder="Place, street, landmark…" aria-label="Search destination">
             <button class="pill" id="s-go" type="submit">Search</button>
           </form>
+          <div class="s-pinbar" id="s-pinbar" hidden>
+            <input class="fld" id="s-pinname" type="text" autocomplete="off" placeholder="Name this place" aria-label="Pin name">
+            <button class="pill" id="s-pinsave" type="button">Save pin</button>
+            <button class="pill" id="s-pincancel" type="button">Cancel</button>
+          </div>
           <div class="s-results" id="s-results"></div>
           <div class="s-foot">
             <button class="crash-btn" id="s-close" type="button">Close</button>
+            <button class="crash-btn" id="s-pinhere" type="button">Pin here</button>
             <button class="crash-btn" id="s-clear" type="button">Clear destination</button>
             <a class="crash-btn go" id="s-nav" href="#" target="_blank" rel="noopener" hidden>Navigate in Maps</a>
           </div>

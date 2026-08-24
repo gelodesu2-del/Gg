@@ -100,7 +100,23 @@ function measureRefresh() {
   })();
 }
 
+/* Installed apps hide the system status bar; a browser tab does not, and it
+   lands on the speed. Checked rather than assumed. */
+function detectInstalled() {
+  const standalone =
+    (window.matchMedia && (matchMedia("(display-mode: fullscreen)").matches ||
+                           matchMedia("(display-mode: standalone)").matches ||
+                           matchMedia("(display-mode: minimal-ui)").matches)) ||
+    window.navigator.standalone === true;
+  document.getElementById("app").dataset.installed = standalone ? "yes" : "no";
+  return standalone;
+}
+
 async function boot() {
+  detectInstalled();
+  if (window.matchMedia) {
+    matchMedia("(display-mode: fullscreen)").addEventListener("change", detectInstalled);
+  }
   dash.build();
   shell.init();
 

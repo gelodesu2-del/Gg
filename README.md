@@ -154,9 +154,37 @@ launcher, its own window in the app switcher, fullscreen with no browser
 chrome, locked to landscape, and a service worker that keeps it opening
 without signal.
 
-That is a Progressive Web App rather than an APK. A packaged APK would need
-Android build tooling and a signing key; for a single rider the installed PWA
-behaves the same day to day.
+That is a Progressive Web App rather than an APK. **Install it — do not just
+bookmark it.** A browser tab keeps the system status bar over the top of the
+page, where it sits directly on the speed readout. Installed, that space comes
+back. The diagnostics block reports which mode is running.
+
+### The APK
+
+`android/nmax-dash.apk` is a built, signed package. Sideload it: copy to the
+phone, tap it, allow installs from that source.
+
+It is a **WebView shell** around the hosted dash — no address bar, no system
+status bar, screen held awake, orientation pinned. Links leave for the app that
+owns them: `sms:` for crash alerts, `viber:`, and map routes to Google Maps.
+Spotify's login is deliberately kept inside so its redirect can land back.
+
+Rebuild with `android/build.sh`, which needs only a JDK, curl, python3 and
+unzip — no Android SDK. `dl.google.com` is unreachable on some networks, which
+rules out the usual SDK download and therefore Bubblewrap and Gradle, so the
+script pulls everything from Maven Central instead: aapt2 out of apktool-lib,
+`dx` from Jake Wharton's repackaging, and apksig for signing.
+
+**Two things the APK cannot do that the installed PWA can:**
+
+- **Web Bluetooth does not exist in WebView.** When the OBD layer lands, RPM
+  and fuel will work in the installed PWA and not in this APK.
+- **Spotify login may refuse a WebView.** Some providers block OAuth there. If
+  it does, use the PWA for Spotify — tokens are per-container and do not carry
+  across.
+
+Signed with a self-generated key, v2 scheme, `minSdk 24 / targetSdk 33`. It is
+not for distribution and is not on any store.
 
 Then paste both keys into the setup screen and grant location and motion.
 
@@ -165,6 +193,11 @@ Then paste both keys into the setup screen and grant location and motion.
 The magnifier on the map opens search. Geocoding is **Nominatim**, which is
 free and needs no key, so search works on either map provider. Results are
 biased toward where you are, and recent destinations are kept.
+
+**Pins** are places kept on purpose, as opposed to recents, which are just the
+last few searches. Tap the marker on any result to pin it, or **Pin here** to
+save where you are standing under a name you choose. Pins show first in the
+search list and survive clearing a destination.
 
 Pick one and the dash shows a **homing chip**: distance and an arrow pointing
 where the destination actually lies from the saddle, rotating as you turn. A

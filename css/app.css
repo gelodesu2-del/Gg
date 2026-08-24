@@ -41,11 +41,16 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
   position:fixed; inset:0; overflow:hidden;
   container-type:size; font-size:9px; font-size:1cqw;
   padding:
-    max(env(safe-area-inset-top), 2px)
+    calc(max(env(safe-area-inset-top), var(--edge)) + var(--top-extra))
     max(env(safe-area-inset-right), var(--edge))
-    max(env(safe-area-inset-bottom), 2px)
+    max(env(safe-area-inset-bottom), var(--edge))
     max(env(safe-area-inset-left), var(--edge));
 }
+/* Running in a browser tab rather than installed, the system status bar sits
+   over the top of the page and lands squarely on the speed. Detected at boot
+   rather than guessed, so the installed app gives the pixels straight back. */
+#app{--top-extra:0px}
+#app[data-installed="no"]{--top-extra:26px}
 #app[data-edge="off"]{--edge:0px}
 #app[data-edge="wide"]{--edge:26px}
 
@@ -235,6 +240,15 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .s-row .km{font-size:1.2em; color:var(--neon); flex:none}
 .s-row .rc{font-size:1.05em; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); flex:none}
 .s-msg{font-size:1.3em; color:var(--ink-3); padding:.6em .1em}
+.s-pinbar{display:flex; gap:.6em; margin-top:.8em}
+.s-pinbar[hidden]{display:none}
+.s-pinbar .fld{flex:1; font-size:1.4em}
+.s-pinbar .pill{font-size:1.25em}
+.s-sec{font-size:1.1em; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-3); margin:.9em .1em .35em}
+.s-sec:first-child{margin-top:0}
+.s-row .pin{background:transparent; border:0; padding:0 .3em; cursor:pointer; color:var(--ink-3); flex:none; line-height:0}
+.s-row .pin svg{width:1.5em; height:1.5em; fill:currentColor}
+.s-row .pin.on{color:var(--gold)}
 .s-foot{display:flex; gap:.6em; flex-wrap:wrap; margin-top:1em}
 .s-foot .crash-btn{margin-top:0; font-size:1.3em; padding:.6em 1.4em}
 .s-foot .go{border-color:var(--neon); color:var(--neon); text-decoration:none; display:inline-block}
