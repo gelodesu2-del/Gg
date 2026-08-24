@@ -8,7 +8,7 @@
    Maps traffic must reach the network untouched — a cached playback state or a
    stale map tile is worse than no answer at all. */
 
-const CACHE = "nmax-v1";
+const CACHE = "nmax-v2";
 const FONT_HOSTS = ["https://fonts.googleapis.com", "https://fonts.gstatic.com"];
 
 const SHELL = [
@@ -16,6 +16,7 @@ const SHELL = [
   "./js/app.js", "./js/state.js", "./js/store.js", "./js/sensors.js",
   "./js/trips.js", "./js/spotify.js", "./js/gmap.js", "./js/sos.js",
   "./js/dash.js", "./js/logs.js", "./js/shell.js",
+  "./js/osm.js", "./js/mapview.js",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/maskable-512.png"
 ];
 

@@ -59,6 +59,7 @@ function init() {
    easing and calling it at 60fps just burns battery for no visible gain. */
 export function update(now) {
   if (!map || !rotor) return;
+  // Raster tiles ignore setHeading, so heading-up means spinning the container.
   rotor.style.transform = "rotate(" + (-S.heading).toFixed(1) + "deg)";
   if (S.lat !== null && now - lastCenter > 250) {
     lastCenter = now;
@@ -67,3 +68,4 @@ export function update(now) {
 }
 
 export function ready() { return !!map; }
+export function usesCssRotor() { return true; }

@@ -182,6 +182,10 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 /* With no map loaded the marker would float over the placeholder, which reads
    as a broken layer rather than an empty one. */
 .mapwrap:not(.live) .map-ovl{display:none}
+/* Attribution is a licence condition of the OSM and CARTO tiles. */
+.map-attr{position:absolute; z-index:3; bottom:.35em; left:.6em; font-size:.95em;
+  color:var(--ink-3); background:rgba(4,5,8,.6); padding:.15em .45em; pointer-events:none}
+.maplibregl-map{background:#030406}
 #range-ring{stroke:rgba(var(--neon-rgb),.30)}
 .mk-o{fill:rgba(var(--neon-rgb),.35)}
 .mk-i{fill:var(--neon)}

@@ -60,7 +60,24 @@ Settings → Pages → deploy from a branch. Gives
 `https://<user>.github.io/<repo>/`. Simpler, one URL, no preview-URL trap,
 slightly slower from Manila.
 
-### 2. Google Maps key
+### 2. The map
+
+**OpenStreetMap is the default and needs nothing** — no account, no key, no
+card. Tiles come from CARTO's dark vector basemap, rendered with MapLibre.
+Because the style is vector rather than raster, the map rotates natively and
+**street labels stay upright** instead of turning over with the world, which
+the Google path could not do.
+
+Attribution to OpenStreetMap and CARTO appears on the map. That is a licence
+condition, not decoration — leave it there.
+
+What OSM gives up against Google: **no live traffic**, and thinner data for
+shops and landmarks. Roads are well covered. For a dash showing where you are,
+neither loss matters much; for finding a place, Google is better.
+
+Skip the rest of this section unless you want Google specifically.
+
+### 2b. Google Maps key (optional)
 
 1. [Google Cloud console](https://console.cloud.google.com/) → new project
 2. Enable **Maps JavaScript API**
@@ -131,7 +148,8 @@ with no devtools attached.
 
 - **Map shows "For development purposes only"** — billing is not enabled on the
   Google Cloud project. The map degrades to a watermarked, unstyled version
-  until a billing account is attached.
+  until a billing account is attached. Settings → **Map** → *OpenStreetMap*
+  avoids the requirement entirely.
 - **Digits show as empty boxes** — the webfont resolved without its glyphs.
   Settings → **Numerals** → *Safe* switches to a face that is already working.
   *Auto* measures at boot and picks on its own.

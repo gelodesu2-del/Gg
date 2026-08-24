@@ -5,7 +5,7 @@ import * as dash from "./dash.js";
 import * as logs from "./logs.js";
 import * as sensors from "./sensors.js";
 import * as spotify from "./spotify.js";
-import * as gmap from "./gmap.js";
+import * as mapview from "./mapview.js";
 import * as sos from "./sos.js";
 
 const $ = (id) => document.getElementById(id);
@@ -106,6 +106,14 @@ export function init() {
   $("inv-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "invertLean"));
   $("crash-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "crashDetect"));
   $("wake-sw").addEventListener("click", (e) => { const on = togSwitch(e.currentTarget, "wakeLock"); wake(on); });
+  $("map-btn").addEventListener("click", (e) => {
+    const next = settings.mapProvider === "osm" ? "google" : "osm";
+    if (next === "google" && !settings.mapKey) { toast("Google needs a key and billing. OpenStreetMap needs neither."); return; }
+    save({ mapProvider: next });
+    e.currentTarget.textContent = next === "osm" ? "OpenStreetMap" : "Google";
+    mapview.swap();
+    renderDiag();
+  });
   $("font-btn").addEventListener("click", (e) => {
     const order = ["auto", "orbitron", "safe"];
     const next = order[(order.indexOf(settings.numeralFont) + 1) % order.length];
@@ -179,7 +187,7 @@ export function init() {
       setupDone: true
     });
     layer("");
-    gmap.load();
+    mapview.load();
     wake(settings.wakeLock);
     toast("Ready");
   });
@@ -240,7 +248,7 @@ function renderDiag() {
   $("diag").innerHTML =
     "<b>Numerals</b> " + (fontOk ? '<span class="ok">Orbitron</span>' : '<span class="bad">fallback — Orbitron did not load</span>') +
     " · <b>digit</b> " + cs.getPropertyValue("--dw").trim() +
-    "<br><b>Map</b> " + mapState +
+    "<br><b>Map</b> " + (settings.mapProvider === "osm" ? "OpenStreetMap · " : "Google · ") + mapState +
     "<br><b>GPS</b> " + gps + " · <b>motion</b> " + (S.lean !== 0 || S.leanRaw !== 0 ? '<span class="ok">yes</span>' : "no movement seen") +
     "<br><b>Spotify</b> " + (S.spotify ? '<span class="ok">connected</span>' : "not connected") +
     "<br><b>Screen</b> " + innerWidth + "×" + innerHeight;
@@ -251,6 +259,7 @@ function syncSettings() {
   $("crash-sw").classList.toggle("on", settings.crashDetect);
   $("wake-sw").classList.toggle("on", settings.wakeLock);
   $("fx-sw").classList.toggle("on", settings.effects);
+  $("map-btn").textContent = settings.mapProvider === "osm" ? "OpenStreetMap" : "Google";
   $("font-btn").textContent = settings.numeralFont === "auto" ? "Auto"
     : settings.numeralFont === "safe" ? "Safe" : "Orbitron";
   $("lim-in").value = settings.speedLimit;

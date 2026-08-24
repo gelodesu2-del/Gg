@@ -102,7 +102,8 @@
               <path class="mk-o" d="M 160 88 L 169 108 L 160 103 L 151 108 Z"/>
               <path class="mk-i" d="M 160 90 L 167 106 L 160 102 L 153 106 Z"/>
             </svg>
-            <div class="map-none" id="map-none">Map key not set</div>
+            <div class="map-none" id="map-none">Loading map…</div>
+            <span class="map-attr" id="map-attr" hidden>© OpenStreetMap contributors · © CARTO</span>
             <span class="chip warm" id="warm">Warm-up</span>
             <span class="chip hole" id="holewarn">Rough road ahead</span>
             <span class="chip tl">NAV <b id="hdg">—</b> · GPS <b id="lock">…</b></span>
@@ -123,7 +124,7 @@
             </div>
             <div class="step">
               <span class="n">2</span>
-              <span class="t">Google Maps key<i>Restricted to this address</i></span>
+              <span class="t">Google Maps key<i>Optional — leave blank to use OpenStreetMap</i></span>
               <input class="fld" id="map-key" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="AIza…" aria-label="Google Maps API key">
             </div>
             <div class="step">
@@ -144,6 +145,7 @@
             <div class="srow"><span class="t">Crash detection<i>Prompts to text your contact</i></span><button class="sw on" id="crash-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Speed limit<i>Soft warning above this</i></span><input class="fld sm" id="lim-in" type="number" min="20" max="140" step="5" aria-label="Speed limit"></div>
             <div class="srow"><span class="t">Theme<i>Applies everywhere</i></span><span class="swatches" id="swatches"></span></div>
+            <div class="srow"><span class="t">Map<i>OpenStreetMap needs no account</i></span><button class="pill" id="map-btn" type="button">OpenStreetMap</button></div>
             <div class="srow"><span class="t">Numerals<i>Switch if the digits show as empty boxes</i></span><button class="pill" id="font-btn" type="button">Auto</button></div>
             <div class="srow"><span class="t">Screen effects<i>Scanlines and glow. Turn off if the dash stutters.</i></span><button class="sw on" id="fx-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Keys<i>Maps and Spotify</i></span><button class="pill" id="keys-btn" type="button">Edit</button></div>

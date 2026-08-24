@@ -7,7 +7,7 @@ import * as shell from "./shell.js";
 import * as sensors from "./sensors.js";
 import * as trips from "./trips.js";
 import * as spotify from "./spotify.js";
-import * as gmap from "./gmap.js";
+import * as mapview from "./mapview.js";
 import * as sos from "./sos.js";
 
 const $ = (id) => document.getElementById(id);
@@ -68,7 +68,7 @@ function frame(now) {
   lastFrame = now;
 
   dash.renderFast();
-  gmap.update(now);
+  mapview.update(now);
 
   if (now - lastSlow >= SLOW_MS) {
     lastSlow = now;
@@ -106,7 +106,7 @@ async function boot() {
   } else {
     sensors.startGPS();
     sensors.startMotion();
-    gmap.load();
+    mapview.load();
   }
 
   logs.render();
