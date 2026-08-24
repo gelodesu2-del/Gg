@@ -17,7 +17,10 @@ const TOKEN = "https://accounts.spotify.com/api/token";
 const API = "https://api.spotify.com/v1";
 const SCOPES = "user-read-playback-state user-modify-playback-state user-read-currently-playing";
 
-const redirectUri = () => location.origin + location.pathname;
+/* Spotify matches redirect URIs character for character, so "/" and
+   "/index.html" are two different registrations. Normalising here means one
+   entry in the dashboard covers both, however the rider reached the page. */
+const redirectUri = () => location.origin + location.pathname.replace(/index\.html$/, "");
 
 function rand(n) {
   const a = new Uint8Array(n);
