@@ -318,8 +318,9 @@ function showResults(hits) {
   const rows = (list, cls) => list.map((d) => {
     const km = S.lat === null ? "" : '<span class="km">' + nav.fmtDistance(haversineTo(d)) + "</span>";
     const on = nav.isPinned(d) ? " on" : "";
+    const src = d.src === "n" ? '<span class="rc">osm</span>' : "";
     return '<button class="s-row" type="button" data-d=\'' + escapeHtml(JSON.stringify({ label: d.label, lat: d.lat, lng: d.lng })) + '\'>' +
-      '<span class="nm">' + escapeHtml(d.label) + "</span>" + km +
+      '<span class="nm">' + escapeHtml(d.label) + "</span>" + km + src +
       '<span class="pin' + on + '" role="button" aria-label="Pin">' + PIN_SVG + "</span></button>";
   }).join("");
 

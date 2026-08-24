@@ -190,8 +190,18 @@ Then paste both keys into the setup screen and grant location and motion.
 
 ### Destination search
 
-The magnifier on the map opens search. Geocoding is **Nominatim**, which is
-free and needs no key, so search works on either map provider. Results are
+The magnifier on the map opens search. Two geocoders are tried in order:
+
+1. **Google Places** whenever a Maps key is set. Far better at businesses —
+   the small, new and informally named places that are the whole point of
+   searching. Needs **Places API (New)** enabled on the same Cloud project;
+   it is a separate API from Maps JavaScript, and separately billed.
+2. **Nominatim** otherwise, or if the Places call fails. Free, no account,
+   strong on streets, barangays and landmarks, thin on shops. Results carry an
+   `osm` tag so a thin result set is explainable rather than mysterious.
+
+The fallback is silent on purpose: if Places is not enabled, search keeps
+working instead of showing an error nobody can act on mid-ride. Results are
 biased toward where you are, and recent destinations are kept.
 
 **Pins** are places kept on purpose, as opposed to recents, which are just the

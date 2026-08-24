@@ -1,20 +1,26 @@
 /* Destination search and homing.
 
-   Geocoding is Nominatim, which is free, needs no key and works whichever map
-   provider is selected — so search does not become another thing to enable and
-   pay for. Its usage policy asks for light, human-paced traffic: requests are
-   debounced and only fire on submit, never per keystroke.
+   Two geocoders, tried in order. Google Places is far better at businesses —
+   the small, new and informally named places Nominatim simply does not carry —
+   so it goes first whenever a Maps key is present. Nominatim is the fallback,
+   and remains the whole story when there is no key: free, no account, strong
+   on streets, barangays and landmarks.
+
+   The fallback is silent by design. If the Places API has not been enabled on
+   the project the call fails, Nominatim answers instead, and search keeps
+   working rather than presenting an error the rider cannot act on mid-ride.
 
    Turn-by-turn is deliberately not built here. Handing the destination to the
    Google Maps app gives voice guidance, live traffic and rerouting for free,
    all of which beat anything this dash could draw. What the dash keeps is the
    thing you actually glance at mid-ride: how far, and which way. */
 
-import { S } from "./state.js";
+import { S, settings } from "./state.js";
 import * as store from "./store.js";
 import { haversine } from "./sensors.js";
 
 const NOMINATIM = "https://nominatim.openstreetmap.org/search";
+const PLACES = "https://places.googleapis.com/v1/places:searchText";
 let dest = store.get("dest", null);
 
 export function destination() { return dest; }
@@ -57,6 +63,50 @@ export function isPinned(d) {
 export async function search(query) {
   const q = query.trim();
   if (q.length < 3) return [];
+  if (settings.mapKey) {
+    const viaGoogle = await placesSearch(q);
+    if (viaGoogle && viaGoogle.length) return viaGoogle;
+  }
+  return nominatimSearch(q);
+}
+
+/* Places API (New) — the only Places endpoint that allows browser calls, and
+   the same key the map already uses. Returns null on any failure so the
+   caller falls through rather than surfacing an error. */
+async function placesSearch(q) {
+  try {
+    const body = {
+      textQuery: q,
+      maxResultCount: 6,
+      ...(S.lat !== null ? {
+        locationBias: { circle: { center: { latitude: S.lat, longitude: S.lng }, radius: 30000 } }
+      } : {})
+    };
+    const res = await fetch(PLACES, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": settings.mapKey,
+        "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.location"
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) return null;
+    const j = await res.json();
+    if (!j.places) return null;
+    return j.places.map((p) => ({
+      label: (p.displayName && p.displayName.text) || shortName(p.formattedAddress || ""),
+      full: p.formattedAddress || "",
+      lat: p.location.latitude,
+      lng: p.location.longitude,
+      src: "g"
+    }));
+  } catch (e) {
+    return null;
+  }
+}
+
+async function nominatimSearch(q) {
   const url = NOMINATIM + "?" + new URLSearchParams({
     q, format: "jsonv2", limit: "6", addressdetails: "0",
     // Bias to where the rider is, so "Ayala" finds the near one.
@@ -70,7 +120,8 @@ export async function search(query) {
       label: shortName(r.display_name),
       full: r.display_name,
       lat: parseFloat(r.lat),
-      lng: parseFloat(r.lon)
+      lng: parseFloat(r.lon),
+      src: "n"
     }));
   } catch (e) {
     return null;

@@ -47,31 +47,37 @@ export function themeStyles() {
   const WATER_BASE = [3, 9, 15];        // water leans blue rather than neutral
 
   return [
+    // Ground sits almost black. Everything above it is a deliberate step up,
+    // and roads have to clear the blocks they run between or the labels end
+    // up floating over nothing — which is exactly how the first pass read.
     { elementType: "geometry", stylers: [{ color: mix(rgb, 0.02) }] },
     { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-    { elementType: "labels.text.stroke", stylers: [{ color: "#040609" }, { weight: 3 }] },
-    { elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.42) }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: "#040609" }, { weight: 4 }] },
+    { elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.45) }] },
 
     { featureType: "poi", stylers: [{ visibility: "off" }] },
     { featureType: "transit", stylers: [{ visibility: "off" }] },
-    { featureType: "administrative", elementType: "geometry", stylers: [{ color: mix(rgb, 0.16) }] },
+    { featureType: "administrative", elementType: "geometry", stylers: [{ color: mix(rgb, 0.14) }] },
     { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
     { featureType: "administrative.neighborhood", stylers: [{ visibility: "off" }] },
 
-    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: mix(rgb, 0.03) }] },
-    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: mix(rgb, 0.06) }] },
-    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: mix(rgb, 0.08) }] },
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: mix(rgb, 0.025) }] },
+    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: mix(rgb, 0.045) }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: mix(rgb, 0.07) }] },
 
-    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.11) }] },
-    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.17) }] },
-    { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.22) }] },
-    { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.38) }] },
-    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.52) }] },
-    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.60) }] },
-    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.80) }] },
+    // The jump from block to road is what makes the network readable at a
+    // glance, so it is a wide one. Casing separates touching roads.
+    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.24) }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.11) }] },
+    { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.38) }] },
+    { featureType: "road.arterial", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.16) }] },
+    { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.58) }] },
+    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.24) }] },
+    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.72) }] },
+    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.88) }] },
 
-    { featureType: "water", elementType: "geometry", stylers: [{ color: mix(rgb, 0.10, WATER_BASE) }] },
-    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.35, WATER_BASE) }] }
+    { featureType: "water", elementType: "geometry", stylers: [{ color: mix(rgb, 0.11, WATER_BASE) }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.40, WATER_BASE) }] }
   ];
 }
 
