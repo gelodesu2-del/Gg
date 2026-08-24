@@ -141,7 +141,7 @@ function init() {
     center: { lat: S.lat ?? 14.55, lng: S.lng ?? 121.03 },
     zoom: 17,
     disableDefaultUI: true,
-    gestureHandling: "none",
+    gestureHandling: "greedy",
     keyboardShortcuts: false,
     clickableIcons: false,
     backgroundColor: "#030406"
@@ -152,13 +152,32 @@ function init() {
   else { opts.styles = themeStyles(); }
 
   map = new google.maps.Map(document.getElementById("gmap"), opts);
+  map.addListener("dragstart", () => {
+    follow = false;
+    if (window.__nmaxMapFollow) window.__nmaxMapFollow(false);
+  });
   document.getElementById("map-none").classList.add("hide");
   document.getElementById("map-slot").classList.add("live");
   if (vector) rotor.style.transform = "";     // the camera turns instead
 }
 
+/* Follow mode: heading-up and centred on the bike. A touch on the map breaks
+   it so the road ahead can be inspected; recenter resumes. */
+let follow = true;
+
+export function setFollow(on) {
+  follow = on;
+  if (!on) {
+    // North-up while browsing — a frozen rotation with the world still
+    // turning underneath is disorienting.
+    if (vector && map) map.setHeading(0);
+    else if (rotor) rotor.style.transform = "";
+  }
+}
+export function following() { return follow; }
+
 export function update(now) {
-  if (!map) return;
+  if (!map || !follow) return;
 
   if (vector) {
     if (Math.abs(S.heading - lastHeading) > 0.8) {

@@ -48,7 +48,7 @@ function init() {
       center: [S.lng ?? 121.03, S.lat ?? 14.55],
       zoom: 16.5,
       bearing: 0,
-      interactive: false,          // the rider never pans it; the bike does
+      interactive: true,
       attributionControl: false,   // shown as a chip instead, to fit the dash
       fadeDuration: 0
     });
@@ -57,6 +57,7 @@ function init() {
       document.getElementById("map-slot").classList.add("live");
       document.getElementById("map-attr").hidden = false;
     });
+    map.on("dragstart", () => { follow = false; if (window.__nmaxMapFollow) window.__nmaxMapFollow(false); });
     map.on("error", (e) => {
       if (!map.isStyleLoaded()) fail("Map style could not be reached.");
     });
@@ -65,10 +66,14 @@ function init() {
   }
 }
 
+let follow = true;
+export function setFollow(on) { follow = on; if (!on && map) map.setBearing(0); }
+export function following() { return follow; }
+
 /* Vector rotation happens inside the map, so the CSS rotor stays at zero and
    labels keep their orientation. */
 export function update(now) {
-  if (!map) return;
+  if (!map || !follow) return;
   if (Math.abs(S.heading - lastBearing) > 0.8) {
     lastBearing = S.heading;
     map.setBearing(S.heading);

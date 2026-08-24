@@ -51,8 +51,11 @@ function goto(p) {
   page = Math.max(0, Math.min(1, p));
   $("pager").style.transform = "translateX(" + (-page * 100) + "%)";
   [...$("dots").children].forEach((d, i) => d.classList.toggle("on", i === page));
+  // The native shell needs this to know what its back gesture should do.
+  try { if (window.NMAXShell) window.NMAXShell.setPage(page); } catch (e) { /* web only */ }
   if (page === 1) logs.render();
 }
+window.__nmaxGoto = goto;
 
 async function wake(on) {
   try {
@@ -101,6 +104,9 @@ export function init() {
   pager.addEventListener("pointerup", end);
   pager.addEventListener("pointercancel", end);
   $("dots").addEventListener("click", () => goto(page === 0 ? 1 : 0));
+  // A swipe from the left edge is the system back gesture, so the logs need a
+  // control that does not depend on one.
+  $("logs-back").addEventListener("click", () => goto(0));
 
   // ---- logs tabs ----
   document.querySelectorAll(".logs-tabs button").forEach((b) =>
@@ -113,7 +119,27 @@ export function init() {
   $("gear").addEventListener("click", () => { syncSettings(); layer("settings"); });
   $("update").addEventListener("click", () => location.reload());
   $("set-close").addEventListener("click", () => layer(""));
-  $("cal-btn").addEventListener("click", () => { sensors.calibrateLean(); toast("Lean zeroed"); });
+  const recal = () => { sensors.calibrateLean(); sensors.resetPeaks(); toast("Lean zeroed — hold the bike upright when you do this"); };
+  $("cal-btn").addEventListener("click", recal);
+  // Long-press the lean dial itself: after remounting the bracket nobody
+  // should have to find a settings row to re-zero. The pager captures the
+  // pointer for its swipe handling, which fires a synthetic pointerleave on
+  // the dial — so cancellation watches the window and real movement instead.
+  {
+    let t = 0, sx = 0, sy = 0;
+    const dial = document.querySelector(".cell.lean");
+    const cancel = () => { clearTimeout(t); t = 0; };
+    dial.addEventListener("pointerdown", (e) => {
+      sx = e.clientX; sy = e.clientY;
+      clearTimeout(t);
+      t = setTimeout(recal, 900);
+    });
+    window.addEventListener("pointerup", cancel);
+    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("pointermove", (e) => {
+      if (t && Math.hypot(e.clientX - sx, e.clientY - sy) > 12) cancel();
+    });
+  }
   $("inv-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "invertLean"));
   $("crash-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "crashDetect"));
   $("wake-sw").addEventListener("click", (e) => { const on = togSwitch(e.currentTarget, "wakeLock"); wake(on); });
@@ -221,6 +247,14 @@ export function init() {
   $("m-play").addEventListener("click", () => spotify.toggle());
   $("m-next").addEventListener("click", async () => { await spotify.next(); setTimeout(spotify.poll, 400); });
   $("m-prev").addEventListener("click", async () => { await spotify.prev(); setTimeout(spotify.poll, 400); });
+
+  // ---- map follow / recenter ----
+  // The map notifies on a drag; the button resumes following.
+  window.__nmaxMapFollow = (on) => { $("recenter-btn").hidden = on; };
+  $("recenter-btn").addEventListener("click", () => {
+    mapview.setFollow(true);
+    $("recenter-btn").hidden = true;
+  });
 
   // ---- destination search ----
   $("search-btn").addEventListener("click", () => { layer("search"); showResults(null); $("s-input").focus(); });

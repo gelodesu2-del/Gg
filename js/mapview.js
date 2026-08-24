@@ -50,6 +50,9 @@ export function restyle() {
   if (active && active.restyle) active.restyle();
 }
 
+export function setFollow(on) { if (active && active.setFollow) active.setFollow(on); }
+export function following() { return active && active.following ? active.following() : true; }
+
 export function swap() {
   if (osm.destroy) osm.destroy();
   const slot = document.getElementById("map-slot");

@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.GeolocationPermissions;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -37,6 +38,16 @@ public class MainActivity extends Activity {
     private static final int REQ_LOCATION = 1;
 
     private WebView web;
+    private final Bridge bridge = new Bridge();
+
+    /** The page reports which pane it is showing so the system back gesture
+        can return to the dash instead of walking WebView history. Swiping in
+        from the left edge is the back gesture on a gesture-nav phone, which is
+        exactly the swipe a rider makes to get out of the logs. */
+    public static class Bridge {
+        private volatile int page = 0;
+        @JavascriptInterface public void setPage(int p) { page = p; }
+    }
 
     @Override
     protected void onCreate(Bundle state) {
@@ -71,6 +82,7 @@ public class MainActivity extends Activity {
         if (Build.VERSION.SDK_INT >= 26) s.setSafeBrowsingEnabled(false);
 
         web.setBackgroundColor(0xFF040507);
+        web.addJavascriptInterface(bridge, "NMAXShell");
         web.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin,
@@ -142,9 +154,12 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        // Back should step through the dash's own history, not drop out of the
-        // app from the first screen.
-        if (web != null && web.canGoBack()) web.goBack();
+        if (web == null) { super.onBackPressed(); return; }
+        if (bridge.page != 0) {
+            web.evaluateJavascript("window.__nmaxGoto && window.__nmaxGoto(0)", null);
+            return;                         // consumed: back means "leave the logs"
+        }
+        if (web.canGoBack()) web.goBack();
         else super.onBackPressed();
     }
 

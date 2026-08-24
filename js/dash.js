@@ -163,7 +163,6 @@ export function renderFast() {
 export function renderSlow(now) {
   setNum($("speed"), S.gpsOk ? Math.round(S.speed) : "––");
   write($("lock"), "textContent", !S.gpsOk ? "…" : (now - S.lastFix > 6000 ? "LOST" : "LOCK"), "lock");
-  write($("hdg"), "textContent", S.gpsOk ? String(Math.round(S.heading)).padStart(3, "0") + "°" : "—", "hdg");
 
   const over = S.gpsOk && S.speed > settings.speedLimit + 2;
   if (memo.slim !== over) { memo.slim = over; $("slim").classList.toggle("on", over); }

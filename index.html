@@ -105,6 +105,9 @@
             <span class="map-attr" id="map-attr" hidden>© OpenStreetMap contributors · © CARTO</span>
             <span class="chip warm" id="warm">Warm-up</span>
             <span class="chip hole" id="holewarn">Rough road ahead</span>
+            <button class="map-btn-recenter" id="recenter-btn" type="button" aria-label="Recenter map" hidden>
+              <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9 3h-2.06A7 7 0 0013 5.06V3h-2v2.06A7 7 0 005.06 11H3v2h2.06A7 7 0 0011 18.94V21h2v-2.06A7 7 0 0018.94 13H21z"/></svg>
+            </button>
             <button class="map-btn-search" id="search-btn" type="button" aria-label="Search destination">
               <svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.3 14l5.4 5.4 1.4-1.4-5.4-5.4A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
             </button>
@@ -112,7 +115,7 @@
               <svg class="to-arrow" id="to-arrow" viewBox="0 0 24 24"><path d="M12 2l7 19-7-5-7 5z"/></svg>
               <b id="to-dist">—</b><i id="to-name">—</i>
             </span>
-            <span class="chip tl">NAV <b id="hdg">—</b> · GPS <b id="lock">…</b></span>
+            <span class="chip tl">GPS <b id="lock">…</b></span>
             <span class="chip bl obd" id="clt-chip">CLT <b id="clt">—</b></span>
             <span class="chip br obd">RANGE <b id="range">—</b></span>
           </div>
@@ -245,6 +248,10 @@
     <section class="pane pane-logs">
       <div class="logs">
         <header class="logs-top">
+          <button class="logs-back" id="logs-back" type="button" aria-label="Back to dashboard">
+            <svg viewBox="0 0 24 24"><path d="M15.4 4.6L13.9 3l-9 9 9 9 1.5-1.6L8 12z"/></svg>
+            <span>Dash</span>
+          </button>
           <span class="logs-title">LOGS</span>
           <nav class="logs-tabs" role="tablist">
             <button role="tab" data-tab="trips"   aria-selected="true"  type="button">Trips</button>
