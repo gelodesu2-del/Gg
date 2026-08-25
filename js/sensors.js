@@ -24,6 +24,8 @@ const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 
 let gpsWatchId = null;
 let motionOn = false;
+let orientOn = false;
+let calJob = null;
 
 export function startGPS() {
   if (!("geolocation" in navigator)) return false;
@@ -32,7 +34,9 @@ export function startGPS() {
     (p) => {
       const c = p.coords;
       if (typeof c.speed === "number" && c.speed >= 0) S.speed = c.speed * 3.6;
-      if (typeof c.heading === "number" && !Number.isNaN(c.heading)) S.heading = c.heading;
+      const fastEnough = (c.speed || 0) * 3.6 >= 8;
+      if (typeof c.heading === "number" && !Number.isNaN(c.heading) &&
+          (fastEnough || !settings.cal)) S.heading = c.heading;
       S.lat = c.latitude;
       S.lng = c.longitude;
       S.accuracy = c.accuracy;
@@ -54,6 +58,11 @@ function motion(e) {
   const g = e.accelerationIncludingGravity;
   const r = e.rotationRate;
   if (!g) return;
+
+  if (calJob) {
+    calJob.gx += g.x || 0; calJob.gy += g.y || 0; calJob.gz += g.z || 0; calJob.gn++;
+    if (now > calJob.until) finishCal();
+  }
 
   // --- lean ---
   if (r && typeof r.alpha === "number") {
@@ -111,6 +120,70 @@ function motion(e) {
   }
 }
 
+/* Compass. alpha is the device's rotation about vertical; the mount makes its
+   absolute value meaningless, which is exactly what calibrating while facing
+   north fixes — whatever alpha reads at that moment becomes the reference,
+   bracket angle and all. Corrected for screen rotation so a flipped landscape
+   mount stays consistent. */
+function orient(e) {
+  let a = e.alpha;
+  if (typeof a !== "number" || Number.isNaN(a)) return;
+  try { a = (a + ((screen.orientation && screen.orientation.angle) || 0)) % 360; } catch (err) { /* keep raw */ }
+  S.compassAlpha = a;
+
+  if (calJob) {
+    const rad = a * Math.PI / 180;
+    calJob.sinA += Math.sin(rad); calJob.cosA += Math.cos(rad); calJob.an++;
+    if (performance.now() > calJob.until) finishCal();
+  }
+
+  const cal = settings.cal;
+  if (!cal || cal.northAlpha == null) return;
+  const now = performance.now();
+  const staleFix = !S.lastFix || now - S.lastFix > 4000;
+  if (S.speed >= 8 && !staleFix) return;            // GPS course owns it while moving
+  const target = (cal.northAlpha - a + 360) % 360;
+  const d = ((target - S.heading + 540) % 360) - 180;
+  S.heading = (S.heading + d * 0.12 + 360) % 360;   // shortest arc, smoothed
+}
+
+/* One guided pass: bike upright on level ground, front wheel facing north,
+   phone in its bracket, held still. Captures the at-rest gravity vector (the
+   bracket's orientation), the compass reference for north, and zeroes the
+   lean integrator. */
+export function calibrateMount(ms = 2000) {
+  return new Promise((resolve) => {
+    calJob = { gx: 0, gy: 0, gz: 0, gn: 0, sinA: 0, cosA: 0, an: 0,
+               until: performance.now() + ms, resolve };
+    setTimeout(() => { if (calJob) finishCal(); }, ms + 600);   // sensors may be silent
+  });
+}
+
+function finishCal() {
+  const c = calJob;
+  calJob = null;
+  if (!c) return;
+  let g = null, pitch = null;
+  if (c.gn) {
+    g = [c.gx / c.gn, c.gy / c.gn, c.gz / c.gn];
+    const mag = Math.hypot(g[0], g[1], g[2]) || 1;
+    // Angle between gravity and the screen plane: 0 = screen perfectly
+    // vertical in the bracket, 90 = lying flat.
+    pitch = Math.round(Math.asin(clamp(Math.abs(g[2]) / mag, 0, 1)) * 180 / Math.PI);
+  }
+  const northAlpha = c.an
+    ? (Math.atan2(c.sinA / c.an, c.cosA / c.an) * 180 / Math.PI + 360) % 360
+    : null;
+  calibrateLean();
+  c.resolve({
+    ok: c.gn > 0 || c.an > 0,
+    gravity: g ? g.map((v) => +v.toFixed(3)) : null,
+    pitch,
+    northAlpha: northAlpha === null ? null : +northAlpha.toFixed(1),
+    when: Date.now()
+  });
+}
+
 export async function startMotion() {
   const DME = window.DeviceMotionEvent;
   if (!DME) return false;
@@ -127,6 +200,17 @@ export async function startMotion() {
   }
   window.addEventListener("devicemotion", motion, { passive: true });
   motionOn = true;
+  if (!orientOn) {
+    orientOn = true;
+    const DOE = window.DeviceOrientationEvent;
+    if (DOE && typeof DOE.requestPermission === "function") {
+      try { await DOE.requestPermission(); } catch (e) { /* compass optional */ }
+    }
+    // Android fires the absolute variant; the plain one is a fallback that at
+    // least keeps relative turns coherent between GPS fixes.
+    window.addEventListener("deviceorientationabsolute", orient, { passive: true });
+    window.addEventListener("deviceorientation", (e) => { if (e.absolute !== false) orient(e); }, { passive: true });
+  }
   return true;
 }
 

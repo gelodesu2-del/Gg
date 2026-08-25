@@ -45,6 +45,7 @@ const defaults = {
   mapId: "",
   spotifyId: "",
   odoOffset: 0,
+  cal: null,
   setupDone: false
 };
 

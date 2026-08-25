@@ -181,8 +181,30 @@ export function init() {
   $("gear").addEventListener("click", () => { if (page === 1) goto(0); syncSettings(); layer("settings"); });
   $("update").addEventListener("click", () => location.reload());
   $("set-close").addEventListener("click", () => layer(""));
+  // Long-press on the dial stays the quick lean-zero; the settings button
+  // opens the full pass that also captures north and the bracket angle.
   const recal = () => { sensors.calibrateLean(); sensors.resetPeaks(); toast("Lean zeroed — hold the bike upright when you do this"); };
-  $("cal-btn").addEventListener("click", recal);
+  $("cal-btn").addEventListener("click", () => { $("cal-status").textContent = ""; layer("cal"); });
+  $("cal-close").addEventListener("click", () => layer("settings"));
+  $("cal-start").addEventListener("click", async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    $("cal-status").textContent = "Sampling — hold everything still…";
+    const r = await sensors.calibrateMount(2000);
+    btn.disabled = false;
+    if (!r.ok) {
+      $("cal-status").textContent = "No sensor data arrived. Grant motion access in setup first.";
+      return;
+    }
+    save({ cal: r });
+    sensors.resetPeaks();
+    $("cal-status").innerHTML =
+      "Done. Lean zeroed · bracket at <b>" + (r.pitch === null ? "?" : r.pitch + "°") + "</b> from vertical · " +
+      (r.northAlpha === null
+        ? "no compass on this phone — heading stays GPS-only."
+        : "north captured at <b>" + Math.round(r.northAlpha) + "°</b>. The map now holds its heading at a standstill.");
+    renderDiag();
+  });
   // Long-press the lean dial itself: after remounting the bracket nobody
   // should have to find a settings row to re-zero. The pager captures the
   // pointer for its swipe handling, which fires a synthetic pointerleave on
@@ -500,6 +522,10 @@ function renderDiag() {
       : (mapview.routeStatus()
           ? '<span class="bad">' + escapeHtml(mapview.routeStatus()) + "</span>"
           : (mapview.routeInfo() ? '<span class="ok">routed</span>' : "no destination"))) +
+    "<br><b>Mount</b> " + (settings.cal
+      ? '<span class="ok">calibrated</span> · ' + (settings.cal.pitch ?? "?") + "° · north " +
+        (settings.cal.northAlpha === null ? "n/a" : Math.round(settings.cal.northAlpha) + "°")
+      : '<span class="bad">not calibrated — heading is GPS-only</span>') +
     "<br><b>Build</b> " + (window.__swVersion || "unknown") +
     "<br><b>Screen</b> " + innerWidth + "×" + innerHeight +
     " · dpr " + (devicePixelRatio || 1).toFixed(2) +

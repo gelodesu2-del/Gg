@@ -368,6 +368,8 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .sos-note{font-size:1.15em; color:var(--ink-3); flex:1; min-width:12em; line-height:1.45}
 .pill{font-family:var(--f-mono); font-size:1.2em; letter-spacing:.14em; text-transform:uppercase; color:var(--neon);
   border:1px solid rgba(var(--neon-rgb),.4); background:transparent; padding:.35em .8em; cursor:pointer}
+.cal-status{font-size:1.4em; color:var(--ink-2); margin-top:1em; min-height:1.6em; line-height:1.5}
+.cal-status b{color:var(--neon); font-weight:400}
 .cs-sec{font-size:1.15em; letter-spacing:.24em; text-transform:uppercase; color:var(--ink-3); margin:1.2em 0 .5em}
 .cs-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(15em,1fr)); gap:.6em}
 .cs-card{
