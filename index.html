@@ -155,6 +155,7 @@
         <div class="layer layer-settings" id="layer-settings">
           <div class="ltitle">SETTINGS</div>
           <div class="rows">
+            <div class="srow"><span class="t">OBD dongle<i id="obd-sub">ELM327 over Bluetooth LE</i></span><button class="pill" id="obd-btn" type="button">Connect</button></div>
             <div class="srow"><span class="t">Calibrate mount<i>Lean zero, north and bracket angle</i></span><button class="pill" id="cal-btn" type="button">Start</button></div>
             <div class="srow"><span class="t">Invert lean<i>If the arc swings the wrong way</i></span><button class="sw" id="inv-sw" type="button" aria-pressed="false"></button></div>
             <div class="srow"><span class="t">Keep screen awake<i>Wake lock while riding</i></span><button class="sw on" id="wake-sw" type="button" aria-pressed="true"></button></div>
@@ -218,6 +219,17 @@
             <button class="crash-btn" id="s-pinhere" type="button">Pin here</button>
             <button class="crash-btn" id="s-clear" type="button">Clear destination</button>
             <a class="crash-btn go" id="s-nav" href="#" target="_blank" rel="noopener" hidden>Navigate in Maps</a>
+          </div>
+        </div>
+
+        <div class="layer layer-obd" id="layer-obd">
+          <div class="ltitle">OBD DONGLE</div>
+          <div class="lsub">Key on. Nearby Bluetooth LE devices appear below — the dongle usually calls itself something like OBDII, iCar or vLink. Tap it once and the dash remembers it.</div>
+          <div class="obd-status" id="obd-status">Scanning…</div>
+          <div class="obd-list" id="obd-list"></div>
+          <div class="s-foot">
+            <button class="crash-btn" id="obd-close" type="button">Close</button>
+            <button class="crash-btn" id="obd-forget" type="button">Forget device</button>
           </div>
         </div>
 

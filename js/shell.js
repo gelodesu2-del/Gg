@@ -8,6 +8,7 @@ import * as spotify from "./spotify.js";
 import * as mapview from "./mapview.js";
 import * as sos from "./sos.js";
 import * as nav from "./nav.js";
+import * as obd from "./obd.js";
 
 const $ = (id) => document.getElementById(id);
 /* name, two preview chips, mode. The mode is what flips the ground tokens —
@@ -184,6 +185,54 @@ export function init() {
   // Long-press on the dial stays the quick lean-zero; the settings button
   // opens the full pass that also captures north and the bracket angle.
   const recal = () => { sensors.calibrateLean(); sensors.resetPeaks(); toast("Lean zeroed — hold the bike upright when you do this"); };
+  // ---- OBD ----
+  const obdRow = () => {
+    $("obd-btn").textContent = obd.connected() || obd.status.state === "connecting" ? "Disconnect" : "Connect";
+    $("obd-sub").textContent =
+      obd.status.state === "polling" ? (obd.status.device || "connected") + " · live" :
+      obd.status.state === "idle" ? "ELM327 over Bluetooth LE" :
+      obd.status.state + (obd.status.error ? " — " + obd.status.error : "");
+  };
+  obd.setOnChange(() => { obdRow(); renderObdStatus(); });
+  $("obd-btn").addEventListener("click", async () => {
+    if (obd.connected() || obd.status.state === "connecting") { obd.disconnect(); obdRow(); return; }
+    if (obd.hasShell()) {
+      $("obd-list").innerHTML = "";
+      layer("obd");
+      renderObdStatus();
+      obd.startScan((dev) => {
+        if ([...$("obd-list").children].some((r) => r.dataset.addr === dev.addr)) return;
+        const row = document.createElement("button");
+        row.className = "s-row"; row.type = "button"; row.dataset.addr = dev.addr;
+        row.innerHTML = '<span class="nm">' + escapeHtml(dev.name) + '</span><span class="rc">' + escapeHtml(dev.addr) + "</span>";
+        row.addEventListener("click", () => { obd.stopScan(); obd.connectTo(dev.addr, dev.name); });
+        $("obd-list").appendChild(row);
+      });
+    } else if (obd.hasWeb()) {
+      await obd.connectWeb();       // the browser shows its own device chooser
+      obdRow();
+    } else {
+      toast("No Bluetooth available here");
+    }
+  });
+  $("obd-close").addEventListener("click", () => { obd.stopScan(); layer("settings"); });
+  $("obd-forget").addEventListener("click", () => { obd.disconnect(); toast("Forgotten"); layer("settings"); });
+
+  function renderObdStatus() {
+    const st = obd.status;
+    const el = $("obd-status");
+    if (!el) return;
+    el.innerHTML =
+      st.state === "scanning" ? "Scanning… tap your dongle when it appears." :
+      st.state === "connecting" ? "Connecting to <b>" + escapeHtml(st.device) + "</b>…" :
+      st.state === "init" || st.state === "probing" ? "Talking to the ECU — first contact can take ten seconds…" :
+      st.state === "polling" ? "<b>" + escapeHtml(st.device || "Connected") + "</b> · RPM " + tick(st.pids.rpm) +
+        " · temp " + tick(st.pids.temp) + " · fuel " + tick(st.pids.fuel) +
+        (st.volts ? " · " + st.volts.toFixed(1) + " V" : "") :
+      st.state === "error" ? "Failed: " + escapeHtml(st.error || "unknown") : "";
+  }
+  const tick = (v) => (v === true ? "✓" : v === false ? "✗" : "…");
+
   $("cal-btn").addEventListener("click", () => { $("cal-status").textContent = ""; layer("cal"); });
   $("cal-close").addEventListener("click", () => layer("settings"));
   $("cal-start").addEventListener("click", async (e) => {
@@ -522,6 +571,11 @@ function renderDiag() {
       : (mapview.routeStatus()
           ? '<span class="bad">' + escapeHtml(mapview.routeStatus()) + "</span>"
           : (mapview.routeInfo() ? '<span class="ok">routed</span>' : "no destination"))) +
+    "<br><b>OBD</b> " + (obd.status.state === "polling"
+      ? '<span class="ok">' + escapeHtml(obd.status.device || "live") + "</span> · rpm " + (obd.status.pids.rpm ? "✓" : "✗") +
+        " temp " + (obd.status.pids.temp ? "✓" : "✗") + " fuel " + (obd.status.pids.fuel ? "✓" : "✗") +
+        (obd.status.volts ? " · " + obd.status.volts.toFixed(1) + " V" : "")
+      : obd.status.state === "idle" ? "not connected" : escapeHtml(obd.status.state)) +
     "<br><b>Mount</b> " + (settings.cal
       ? '<span class="ok">calibrated</span> · ' + (settings.cal.pitch ?? "?") + "° · north " +
         (settings.cal.northAlpha === null ? "n/a" : Math.round(settings.cal.northAlpha) + "°")

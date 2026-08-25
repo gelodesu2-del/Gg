@@ -218,6 +218,17 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .obd .k{color:#4C5560}
 .obd::after{display:none}
 .chip.obd{opacity:.45}
+/* A signal the dongle actually answers lights its cell back up. */
+.obd.live .v{color:var(--ink); text-shadow:0 0 .4em rgba(var(--neon-rgb),.3)}
+.obd.live .k{color:var(--ink-3)}
+.obd.live::after{display:block}
+.obd.live .tag-off{display:none}
+.chip.obd.live{opacity:1}
+
+/* OBD device picker */
+.obd-status{font-size:1.35em; color:var(--ink-2); margin:.8em 0; min-height:1.5em}
+.obd-status b{color:var(--neon); font-weight:400}
+.obd-list{display:grid; gap:.4em; max-height:14em; overflow-y:auto}
 
 /* ---------- map ---------- */
 .mapwrap{position:relative; overflow:hidden; background:#030406}

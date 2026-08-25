@@ -46,6 +46,8 @@ const defaults = {
   spotifyId: "",
   odoOffset: 0,
   cal: null,
+  obdAddr: "",
+  obdName: "",
   setupDone: false
 };
 

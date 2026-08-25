@@ -196,7 +196,17 @@ export function renderSlow(now) {
   let frac = null;
   if (S.rpm !== null) frac = clamp((S.rpm - 3000) / 6300, 0, 1);
   else if (S.gpsOk) frac = clamp(S.speed / 115, 0, 1);
-  const lit = frac === null ? 0 : Math.round(frac * N);
+  let lit = frac === null ? 0 : Math.round(frac * N);
+
+  // Warm-up advisor: while the coolant is below target the sweep is capped at
+  // a ceiling that rises with temperature — "don't thrash it cold" as a
+  // visible limit instead of advice. Needs the dongle: no temp, no ceiling.
+  const cold = S.temp !== null && S.temp < CFG.warmC;
+  if (cold) {
+    const ceil = Math.round(N * (0.28 + 0.5 * clamp((S.temp - 30) / (CFG.warmC - 30), 0, 1)));
+    lit = Math.min(lit, ceil);
+  }
+  if (memo.warm !== cold) { memo.warm = cold; $("warm").classList.toggle("on", cold); }
   for (let i = 0; i < N; i++) {
     const on = i < lit;
     const col = !on ? TH.off : i < N * 0.6 ? TH.neon : i < N * 0.85 ? TH.gold : TH.red;
@@ -206,8 +216,24 @@ export function renderSlow(now) {
     segs[i].style.boxShadow = on ? "0 0 .55em " + col : "none";
   }
 
-  // engine data, absent until a dongle answers. Written once, not every frame.
-  if (S.rpm === null) {
+  // Engine data, signal by signal — the NMAX's ECU may answer RPM and temp
+  // while refusing fuel, and one missing gauge must not blank the others.
+  const live = (id, on) => {
+    if (memo["lv" + id] === on) return;
+    memo["lv" + id] = on;
+    const el = $(id).closest(".obd");
+    if (el) el.classList.toggle("live", on);
+  };
+
+  live("rpm", S.rpm !== null);
+  setNum($("rpm"), S.rpm === null ? "—" : Math.round(S.rpm / 10) * 10);
+
+  live("fuel-v", S.fuel !== null);
+  live("range", S.fuel !== null);
+  if (S.fuel === null) {
+    setNum($("fuel-v"), "—");
+    write($("range"), "textContent", "—", "rng");
+    attr($("range-ring"), "r", "0", "rr");
     const pips = $("pips").children;
     for (let i = 0; i < pips.length; i++) {
       if (pipCache[i] === TH.off) continue;
@@ -215,12 +241,34 @@ export function renderSlow(now) {
       pips[i].style.background = TH.off;
       pips[i].style.boxShadow = "none";
     }
-    setNum($("rpm"), "—");
-    setNum($("fuel-v"), "—");
-    write($("range"), "textContent", "—", "rng");
+  } else {
+    setNum($("fuel-v"), S.fuel.toFixed(1));
+    const range = S.fuel * CFG.kmPerL;
+    write($("range"), "textContent", Math.round(range) + " km", "rng");
+    attr($("range-ring"), "r", clamp(18 + range / 210 * 74, 14, 96).toFixed(1), "rr");
+    const pips = $("pips").children, litP = Math.ceil(S.fuel / CFG.tank * pips.length);
+    const low = litP <= 2;
+    for (let i = 0; i < pips.length; i++) {
+      const col = i < litP ? (low ? TH.gold : TH.neon) : TH.off;
+      if (pipCache[i] === col) continue;
+      pipCache[i] = col;
+      pips[i].style.background = col;
+      pips[i].style.boxShadow = i < litP ? "0 0 .4em " + col : "none";
+    }
+  }
+
+  live("clt", S.temp !== null);
+  if (S.temp === null) {
     write($("clt"), "textContent", "—", "clt");
-    attr($("range-ring"), "r", "0", "rr");
-    if (memo.warm !== false) { memo.warm = false; $("warm").classList.remove("on"); }
+  } else {
+    write($("clt"), "textContent", Math.round(S.temp) + "°C", "clt");
+    const hot = S.temp > 108, warmish = S.temp > 100;
+    const col = hot ? TH.red : warmish ? TH.gold : "";
+    if (memo.cltc !== col) {
+      memo.cltc = col;
+      $("clt-chip").style.color = col;
+      $("clt-chip").style.borderColor = col;
+    }
   }
 
   // destination homing — how far, and which way from the saddle

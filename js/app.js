@@ -9,6 +9,7 @@ import * as trips from "./trips.js";
 import * as spotify from "./spotify.js";
 import * as mapview from "./mapview.js";
 import * as sos from "./sos.js";
+import * as obd from "./obd.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -169,7 +170,11 @@ async function boot() {
   requestAnimationFrame(frame);
 
   // A trip left open by a hard close should not swallow the next one.
-  window.addEventListener("pagehide", () => { trips.close(); trips.flushJolts(); });
+  window.addEventListener("pagehide", () => { trips.close(); trips.flushJolts(); obd.flushHealth(); });
+
+  // A remembered dongle reconnects on its own — riding gloves and Bluetooth
+  // menus do not mix.
+  if (settings.obdAddr) setTimeout(() => obd.connectSaved(), 2500);
 
   // Installs the app to the home screen and keeps it opening without signal.
   if ("serviceWorker" in navigator) {

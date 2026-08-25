@@ -5,6 +5,7 @@ import { settings, SERVICE_DEFAULTS } from "./state.js";
 import * as store from "./store.js";
 import * as trips from "./trips.js";
 import { readTheme } from "./dash.js";
+import * as obd from "./obd.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -90,6 +91,27 @@ export function render() {
         '<div class="rrow"><span class="g">' + g.lat.toFixed(4) + ", " + g.lng.toFixed(4) +
         '</span><span class="n">' + g.n + "</span></div>").join("")
     : '<div class="empty"><b>Nothing logged.</b>Every hard vertical jolt gets pinned to where it happened. Ride the same roads for a week and the worst stretches surface here on their own.</div>';
+
+  // ---- health: weekly belt + battery, collected while the dongle polls ----
+  const hp = document.querySelector('.tabpane[data-tab="health"]');
+  if (hp) {
+    const belt = obd.beltWeeks(), batt = obd.battWeeks();
+    if (!belt.length && !batt.length) {
+      hp.innerHTML = '<div class="empty"><b>Collecting.</b>Belt wear is the median RPM while holding 55–65 km/h, one point a week; battery health is the lowest voltage seen each week. Ride with the dongle connected and the first points appear here.</div>';
+    } else {
+      const drift = belt.length >= 2 ? ((belt[belt.length - 1].median - belt[0].median) / belt[0].median * 100) : null;
+      hp.innerHTML =
+        '<div class="verdict">' + (drift === null
+          ? "<i>First belt point logged — drift needs at least two weeks.</i>"
+          : "Belt drift since week one: <b>" + (drift >= 0 ? "+" : "") + drift.toFixed(1) + "%</b>. <i>Replace around +8%.</i>") + "</div>" +
+        '<h3 class="rsub">Belt · median RPM at 60 km/h</h3>' +
+        '<div class="rough">' + belt.map((w) =>
+          '<div class="rrow"><span class="g">' + esc(w.week) + " · " + w.n + ' samples</span><span class="n" style="color:var(--neon)">' + fmt(w.median) + "</span></div>").join("") + "</div>" +
+        (batt.length ? '<h3 class="rsub" style="margin-top:1.2em">Battery · weekly low</h3>' +
+          '<div class="rough">' + batt.map((w) =>
+            '<div class="rrow"><span class="g">' + esc(w.week) + '</span><span class="n" style="color:' + (w.min < 11.8 ? "var(--red)" : "var(--neon)") + '">' + w.min.toFixed(1) + " V</span></div>").join("") + "</div>" : "");
+    }
+  }
 
   // ---- service ----
   const odo = Math.round(trips.odometer() + (settings.odoOffset || 0));
