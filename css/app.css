@@ -107,11 +107,11 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .pane{position:relative; overflow:hidden; min-width:0}
 /* Held sideways, the punch-hole camera sits at the vertical centre of one
    edge — precisely where these used to be. Nudged clear of it. */
-.dots{position:absolute; z-index:15; right:.6em; top:32%; display:flex; flex-direction:column; gap:.5em}
+.dots{position:absolute; z-index:15; right:3em; top:32%; display:flex; flex-direction:column; gap:.5em}
 .dots i{display:block; width:.28em; height:1.8em; background:#2A3038; border-radius:.2em; transition:background .2s}
 .dots i.on{background:var(--neon); box-shadow:0 0 .6em var(--neon)}
 .gear{
-  position:absolute; z-index:15; right:.5em; bottom:.6em; width:3.4em; height:3.4em; padding:.6em;
+  position:absolute; z-index:15; right:2.9em; bottom:.6em; width:3.4em; height:3.4em; padding:.6em;
   background:var(--veil); border:1px solid var(--edge); color:var(--ink-3); cursor:pointer;
 }
 .gear svg{width:100%; height:100%; fill:currentColor}
@@ -138,14 +138,18 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 #app[data-fx="off"] .cell .v{text-shadow:none}
 
 .shift{display:flex; gap:.3em; padding:1.15em 1.5em .75em; align-items:stretch}
+/* The top row's continuation: revs build left to right, then pour down the
+   right edge into the red. Same segments, turned on their side. */
+.shift-v{display:flex; flex-direction:column; gap:.3em; padding:.35em .55em 1em .15em; min-height:0}
+.shift-v .seg{width:auto; flex:1}
 .seg{flex:1; background:var(--off); box-shadow:inset 0 0 0 1px rgba(var(--neon-rgb),.06)}
 
-.main{display:grid; grid-template-columns:46em 1fr; border-top:1px solid var(--edge); min-height:0}
+.main{display:grid; grid-template-columns:42em 1fr 2.1em; border-top:1px solid var(--edge); min-height:0}
 .left{position:relative; padding:1.4em 1.9em 1.5em; display:grid; grid-template-rows:1fr auto auto auto; gap:.78em; min-height:0; border-right:1px solid var(--edge)}
 .speedwrap{display:flex; flex-direction:column; justify-content:center; min-height:0; overflow:hidden}
 .speed-row{display:flex; align-items:center; justify-content:space-between; gap:.6em; min-width:0}
 .speed{
-  font-family:var(--f-num); font-weight:800; font-size:14.2em; line-height:.84;
+  font-family:var(--f-num); font-weight:800; font-size:13.2em; line-height:.84;
   letter-spacing:-.01em; color:var(--num-ink);
   text-shadow:-.016em 0 rgba(var(--gold-rgb),.6), .016em 0 rgba(var(--neon-rgb),.6);
 }
@@ -189,7 +193,7 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .cell .v{font-family:var(--f-num); font-weight:700; font-size:3.1em; line-height:1.1; display:block; margin-top:.15em;
   text-shadow:0 0 .4em rgba(var(--neon-rgb),.3)}
 .cell.lean{display:flex; flex-direction:column}
-.leansvg{height:5.7em; width:auto; max-width:100%; aspect-ratio:200/92; margin:.2em auto 0; display:block}
+.leansvg{height:6.1em; width:auto; max-width:100%; aspect-ratio:200/92; margin:.2em auto 0; display:block}
 #lean-track{stroke:var(--off)}
 #lean-ticks{stroke:var(--ink-3)}
 #lean-val{fill:var(--ink)}

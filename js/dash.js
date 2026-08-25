@@ -122,6 +122,7 @@ const lpt = (deg, rad) => [
 
 export function build() {
   $("shift").innerHTML = Array.from({ length: 20 }, () => '<span class="seg"></span>').join("");
+  $("shift-v").innerHTML = Array.from({ length: 12 }, () => '<span class="seg"></span>').join("");
   $("pips").innerHTML = Array.from({ length: PIPS }, () => '<span class="pip"></span>').join("");
 
   const [x0, y0] = lpt(-LEAN.max, LEAN.r), [x1, y1] = lpt(LEAN.max, LEAN.r);
@@ -187,15 +188,26 @@ export function renderSlow(now) {
   write($("peak-l"), "textContent", "L " + String(Math.round(S.maxL)).padStart(2, "0"), "pl");
   write($("peak-r"), "textContent", "R " + String(Math.round(S.maxR)).padStart(2, "0"), "pr");
 
+  // The sweep: across the top, then down the right edge. Driven by RPM once
+  // a dongle answers; until then by GPS speed, so the bar lives from day one
+  // instead of sitting dark until hardware arrives.
+  const segs = [...$("shift").children, ...$("shift-v").children];
+  const N = segs.length;
+  let frac = null;
+  if (S.rpm !== null) frac = clamp((S.rpm - 3000) / 6300, 0, 1);
+  else if (S.gpsOk) frac = clamp(S.speed / 115, 0, 1);
+  const lit = frac === null ? 0 : Math.round(frac * N);
+  for (let i = 0; i < N; i++) {
+    const on = i < lit;
+    const col = !on ? TH.off : i < N * 0.6 ? TH.neon : i < N * 0.85 ? TH.gold : TH.red;
+    if (segCache[i] === col) continue;
+    segCache[i] = col;
+    segs[i].style.background = col;
+    segs[i].style.boxShadow = on ? "0 0 .55em " + col : "none";
+  }
+
   // engine data, absent until a dongle answers. Written once, not every frame.
   if (S.rpm === null) {
-    const segs = $("shift").children;
-    for (let i = 0; i < segs.length; i++) {
-      if (segCache[i] === TH.off) continue;
-      segCache[i] = TH.off;
-      segs[i].style.background = TH.off;
-      segs[i].style.boxShadow = "none";
-    }
     const pips = $("pips").children;
     for (let i = 0; i < pips.length; i++) {
       if (pipCache[i] === TH.off) continue;
