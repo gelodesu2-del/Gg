@@ -10,20 +10,31 @@ import * as sos from "./sos.js";
 import * as nav from "./nav.js";
 
 const $ = (id) => document.getElementById(id);
+/* name, two preview chips, mode. The mode is what flips the ground tokens —
+   a light theme is dark accents sitting on paper instead of neon on black. */
 const THEMES = [
-  ["emerald", "#00F58C", "#FFB833"], ["ion", "#00F0FF", "#FF2E97"],
-  ["amber", "#FFB020", "#FF7A1A"],   ["violet", "#A97BFF", "#FF7ADF"],
-  ["mono", "#E8EDF2", "#B0B8C2"],    ["crimson", "#FF4757", "#FFB833"]
+  ["emerald",  "#00F58C", "#FFB833", "dark"],
+  ["ion",      "#00F0FF", "#FF2E97", "dark"],
+  ["amber",    "#FFB020", "#FF7A1A", "dark"],
+  ["violet",   "#A97BFF", "#FF7ADF", "dark"],
+  ["mono",     "#E8EDF2", "#B0B8C2", "dark"],
+  ["crimson",  "#FF4757", "#FFB833", "dark"],
+  ["daylight", "#00794A", "#B26B00", "light"],
+  ["paper",    "#22303C", "#8A6D3B", "light"],
+  ["sunburst", "#A85400", "#963200", "light"],
+  ["sakura",   "#B0225C", "#7A4A00", "light"]
 ];
 
 let page = 0, sx = 0, sy = 0, axis = null, dx = 0, wakeRef = null;
 
 export function setTheme(name) {
-  $("app").dataset.theme = name;
-  save({ theme: name });
+  const def = THEMES.find((t) => t[0] === name) || THEMES[0];
+  $("app").dataset.theme = def[0];
+  $("app").dataset.mode = def[3];
+  save({ theme: def[0] });
   dash.readTheme();
-  document.querySelectorAll(".sw-btn").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === name)));
-  mapview.restyle();          // the map follows the theme too
+  document.querySelectorAll(".cs-card").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.theme === def[0])));
+  mapview.restyle();          // the map follows the theme, mode included
   logs.render();
 }
 
@@ -111,11 +122,16 @@ async function wake(on) {
 }
 
 export function init() {
-  // ---- theme swatches ----
-  $("swatches").innerHTML = THEMES.map(([n, a, b]) =>
-    '<button class="sw-btn" type="button" data-theme="' + n + '" title="' + n +
-    '"><i style="background:' + a + '"></i><i style="background:' + b + '"></i></button>').join("");
-  document.querySelectorAll(".sw-btn").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.theme)));
+  // ---- colors menu ----
+  const card = ([n, a, b]) =>
+    '<button class="cs-card" type="button" data-theme="' + n + '" aria-pressed="false">' +
+    '<span class="cs-strip"><i style="background:' + a + '"></i><i style="background:' + b + '"></i></span>' +
+    '<span class="nm">' + n + "</span></button>";
+  $("cs-dark").innerHTML = THEMES.filter((t) => t[3] === "dark").map(card).join("");
+  $("cs-light").innerHTML = THEMES.filter((t) => t[3] === "light").map(card).join("");
+  document.querySelectorAll(".cs-card").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.theme)));
+  $("colors-btn").addEventListener("click", () => layer("colors"));
+  $("cs-close").addEventListener("click", () => layer("settings"));
 
   // ---- pager: horizontal drags page, vertical ones scroll the logs ----
   const pager = $("pager");

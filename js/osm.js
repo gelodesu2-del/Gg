@@ -7,7 +7,13 @@
 
 import { S } from "./state.js";
 
-const STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const STYLES = {
+  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+};
+const styleFor = () =>
+  STYLES[document.getElementById("app").dataset.mode === "light" ? "light" : "dark"];
+let styleUrl = null;
 const LIB_JS = "https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js";
 const LIB_CSS = "https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css";
 
@@ -48,7 +54,7 @@ function init() {
   try {
     map = new maplibregl.Map({
       container: "gmap",
-      style: STYLE,
+      style: (styleUrl = styleFor()),
       center: [S.lng ?? 121.03, S.lat ?? 14.55],
       zoom: 16.5,
       bearing: 0,
@@ -97,6 +103,12 @@ export function setDestination(d) {
   const el = document.createElement("div");
   el.className = "dest-pin";
   destMarker = new maplibregl.Marker({ element: el }).setLngLat([d.lng, d.lat]).addTo(map);
+}
+
+export function restyle() {
+  if (!map) return;
+  const want = styleFor();
+  if (want !== styleUrl) { styleUrl = want; try { map.setStyle(want); } catch (e) { /* keep old */ } }
 }
 
 export function usesCssRotor() { return false; }

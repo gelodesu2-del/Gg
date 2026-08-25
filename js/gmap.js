@@ -30,8 +30,8 @@ let destMarker = null;
    Google's styling cannot do glow, so the cyber read comes from the ratios:
    a very dark ground, a narrow band of accent-tinted roads, and labels bright
    enough to catch but not to compete with the cluster. */
-function mix(rgb, k, base) {
-  const b = base || [4, 6, 9];
+function mix(rgb, k, base, fallback) {
+  const b = base || fallback || [4, 6, 9];
   return "#" + rgb.map((c, i) => Math.round(b[i] + (c - b[i]) * k)
     .toString(16).padStart(2, "0")).join("");
 }
@@ -44,37 +44,43 @@ export function themeStyles() {
     if (p.length === 3 && p.every((n) => !isNaN(n))) rgb = p;
   } catch (e) { /* fall back to the default accent */ }
 
-  const WATER_BASE = [3, 9, 15];        // water leans blue rather than neutral
+  const light = document.getElementById("app").dataset.mode === "light";
+  // In light mode the ramp inverts by construction: the ground is paper and
+  // the accents are dark, so mixing toward the accent still darkens roads
+  // with importance. Water keeps a blue cast in both.
+  const BASE = light ? [242, 244, 246] : [4, 6, 9];
+  const WATER_BASE = light ? [198, 214, 226] : [3, 9, 15];
+  const STROKE = light ? "#F2F4F6" : "#040609";
 
   return [
     // Ground sits almost black. Everything above it is a deliberate step up,
     // and roads have to clear the blocks they run between or the labels end
     // up floating over nothing — which is exactly how the first pass read.
-    { elementType: "geometry", stylers: [{ color: mix(rgb, 0.02) }] },
+    { elementType: "geometry", stylers: [{ color: mix(rgb, 0.02, BASE) }] },
     { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-    { elementType: "labels.text.stroke", stylers: [{ color: "#040609" }, { weight: 4 }] },
-    { elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.45) }] },
+    { elementType: "labels.text.stroke", stylers: [{ color: STROKE }, { weight: 4 }] },
+    { elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.45, BASE) }] },
 
     { featureType: "poi", stylers: [{ visibility: "off" }] },
     { featureType: "transit", stylers: [{ visibility: "off" }] },
-    { featureType: "administrative", elementType: "geometry", stylers: [{ color: mix(rgb, 0.14) }] },
+    { featureType: "administrative", elementType: "geometry", stylers: [{ color: mix(rgb, 0.14, BASE) }] },
     { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
     { featureType: "administrative.neighborhood", stylers: [{ visibility: "off" }] },
 
-    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: mix(rgb, 0.025) }] },
-    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: mix(rgb, 0.045) }] },
-    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: mix(rgb, 0.07) }] },
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: mix(rgb, 0.025, BASE) }] },
+    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: mix(rgb, 0.045, BASE) }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: mix(rgb, 0.07, BASE) }] },
 
     // The jump from block to road is what makes the network readable at a
     // glance, so it is a wide one. Casing separates touching roads.
-    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.24) }] },
-    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.11) }] },
-    { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.38) }] },
-    { featureType: "road.arterial", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.16) }] },
-    { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.58) }] },
-    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.24) }] },
-    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.72) }] },
-    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.88) }] },
+    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.24, BASE) }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.11, BASE) }] },
+    { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.38, BASE) }] },
+    { featureType: "road.arterial", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.16, BASE) }] },
+    { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.58, BASE) }] },
+    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.24, BASE) }] },
+    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.72, BASE) }] },
+    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.88, BASE) }] },
 
     { featureType: "water", elementType: "geometry", stylers: [{ color: mix(rgb, 0.11, WATER_BASE) }] },
     { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.40, WATER_BASE) }] }
