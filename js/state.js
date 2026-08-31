@@ -42,6 +42,9 @@ const defaults = {
   speedLimit: 60,
   roadLimits: true,    // take the limit from the road when OSM knows it
 
+  /* "osm" | "flat" | "3d". Replaced mapProvider, which could say Google but
+     had no way to say which of Google's two very different renderers. */
+  mapMode: "",
   mapProvider: "auto",
   mapKey: "",
   mapId: "",
@@ -56,6 +59,15 @@ const defaults = {
 };
 
 export const settings = Object.assign({}, defaults, store.get("settings", {}));
+
+/* One-time migration off mapProvider. An install that chose Google gets the
+   renderer it was actually running: 3D if a Map ID was set, flat otherwise. */
+if (!settings.mapMode) {
+  const p = settings.mapProvider;
+  const google = p === "google" || (p !== "osm" && settings.mapKey);
+  settings.mapMode = !google ? "osm" : settings.mapId ? "3d" : "flat";
+  store.set("settings", settings);
+}
 
 /* An earlier build stored a single bare number. Fold it into the list so the
    setting is not silently lost on upgrade. */

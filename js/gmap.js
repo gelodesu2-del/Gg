@@ -119,9 +119,23 @@ function watchForAuthErrors() {
   window.gm_authFailure = () => fail("AuthFailure");
 }
 
+/* The SDK cannot be unloaded once injected, but a second Map can be built on
+   the same element — which is what makes flipping between flat and 3D
+   instant instead of a page reload. */
+export function reinit() {
+  if (!window.google || !window.google.maps) return false;
+  destMarker = null;
+  bikeMarker = null;
+  markPins = [];
+  clearRoute();
+  init();
+  if (routeDest) setDestination(routeDest);
+  return true;
+}
+
 export function load() {
   if (!settings.mapKey) return false;
-  if (document.getElementById("gmaps-js")) return true;
+  if (document.getElementById("gmaps-js")) return reinit() || true;
   watchForAuthErrors();
   window.__nmaxMapReady = init;
   const s = document.createElement("script");
@@ -136,7 +150,9 @@ export function load() {
 
 function init() {
   rotor = document.getElementById("map-rotor");
-  vector = !!settings.mapId;
+  // Vector is a deliberate choice now, not merely "a Map ID exists" — the ID
+  // can stay saved while the rider rides on flat tiles.
+  vector = settings.mapMode === "3d" && !!settings.mapId;
 
   const opts = {
     center: { lat: S.lat ?? 14.55, lng: S.lng ?? 121.03 },
@@ -182,7 +198,7 @@ function init() {
    therefore raised buildings — is only available with a Map ID, and a Map ID
    moves styling into the Cloud console: an inline styles array is ignored the
    moment one is set. Diagnostics says which of the two the rider is getting. */
-export function mapMode() {
+export function renderMode() {
   if (!map) return "";
   if (!vector) return "flat — no Map ID set, so the map is raster tiles";
   let tilt = null;

@@ -219,6 +219,43 @@ the moment follow breaks, the fixed arrow hides and a real marker pinned to the
 ground takes over, still tracking the bike as it moves. Recentring puts it
 back.
 
+### Choosing a map
+
+Settings → **Map** cycles three renderers, and the choice is instant — no
+reload, because the Maps SDK will build a second map on the same element even
+though it cannot be unloaded.
+
+| | Needs | Tilt | Styled by |
+|---|---|---|---|
+| **OpenStreetMap** | nothing | no | this repo (CARTO dark) |
+| **Google flat** | a Maps key | no | this repo, greyscale |
+| **Google 3D** | a Maps key **and** a Map ID | yes | the Cloud console |
+
+The Map ID stays saved when you switch away from 3D, so flipping back is one
+tap. 3D is refused with a message if no Map ID is set, rather than silently
+landing on flat tiles and leaving you wondering.
+
+**Making a Map ID.** In the Google Cloud console, on the same project as the
+Maps key, find Google Maps Platform → *Map management* and create a Map ID:
+
+1. Map type **JavaScript**.
+2. Rendering **Vector** — this is the one that matters. A raster Map ID is
+   valid, loads fine, and will never tilt.
+3. Tick **Tilt** and **Rotation**. They are separate switches from the
+   rendering choice, and with them off the camera stays flat no matter what
+   the app asks for. This is the usual reason a correct-looking setup still
+   renders top-down.
+4. Paste the ID into Settings → **Keys** → *Google Map ID*. Entering one there
+   switches the app to 3D on its own, since nobody types a Map ID meaning to
+   stay on flat tiles.
+
+**Then style it, or it will be bright.** A Map ID takes styling out of this
+repo — the greyscale below is ignored the moment one is set, and Google's
+default is a light map that looks wrong on a dash at night. Create a style in
+*Map styles*, make it dark, and associate it with that Map ID. Settings →
+diagnostics → **Map mode** reports which renderer actually came up and, when
+3D was asked for and did not arrive, says so.
+
 ### The map is grey on purpose
 
 Colour on this screen means *the app is telling you something* — the route, the
@@ -227,13 +264,8 @@ competes with all of it, and at a glance the eye cannot separate a lit road
 from a lit instrument. So the map runs on a pure value ramp, near-black ground
 through grey roads, with water the only thing allowed off the grey axis.
 
-**3D needs a vector Map ID.** Tilt, and therefore raised buildings, only exist
-on Google's vector renderer, which is only available with a Map ID. Setting one
-also moves styling into the Cloud console — an inline styles array is ignored
-the moment a Map ID exists, so the greyscale above applies to raster tiles
-only. To get both, create a Map ID with vector rendering enabled and give it a
-dark style there. Settings → diagnostics → **Map mode** says which of the two
-is actually running and why.
+This applies to **Google flat** and OpenStreetMap. Google 3D takes its styling
+from the Cloud console instead — see *Choosing a map* above.
 
 ### The compass
 

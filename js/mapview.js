@@ -11,9 +11,7 @@ import * as osm from "./osm.js";
 /* "auto" means: use Google when it has been configured, otherwise the map
    that needs nothing. Explicit choices still win. */
 function resolve() {
-  if (settings.mapProvider === "google") return "google";
-  if (settings.mapProvider === "osm") return "osm";
-  return settings.mapKey ? "google" : "osm";
+  return settings.mapMode === "osm" ? "osm" : "google";
 }
 export function providerName() { return resolve(); }
 const pick = () => (resolve() === "google" ? google : osm);
@@ -86,8 +84,8 @@ function applyPending() {
 }
 
 /* Whether the map is drawing in 3D, and why not when it is not. */
-export function mapMode() {
-  return active && active.mapMode ? active.mapMode() : "";
+export function renderMode() {
+  return active && active.renderMode ? active.renderMode() : "";
 }
 
 /* Turn-by-turn steps only exist where a directions service returned them —
@@ -108,9 +106,16 @@ export function swap() {
   document.getElementById("map-none").classList.remove("hide");
   document.getElementById("map-none").textContent = "Loading map…";
   document.getElementById("map-rotor").style.transform = "";
-  // Google's SDK cannot be unloaded once injected, so a swap back to it needs
-  // a reload; OSM can be torn down and rebuilt in place.
-  if (resolve() === "google" && document.getElementById("gmaps-js")) location.reload();
-  else load();
+  // Google's SDK cannot be unloaded, but it can build a second map on the same
+  // element, so flat <-> 3D and a return from OSM are both instant. Only a
+  // move to OSM after Google has been injected needs the page back.
+  active = pick();
+  if (resolve() === "google" && document.getElementById("gmaps-js")) {
+    if (!google.reinit()) location.reload();
+  } else if (resolve() === "osm" && document.getElementById("gmaps-js")) {
+    location.reload();
+  } else {
+    load();
+  }
   document.getElementById("map-attr").hidden = resolve() === "google";
 }

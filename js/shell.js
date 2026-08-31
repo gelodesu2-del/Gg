@@ -357,11 +357,21 @@ export function init() {
   $("inv-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "invertLean"));
   $("crash-sw").addEventListener("click", (e) => togSwitch(e.currentTarget, "crashDetect"));
   $("wake-sw").addEventListener("click", (e) => { const on = togSwitch(e.currentTarget, "wakeLock"); wake(on); });
+  /* Three renderers, not two providers: OpenStreetMap, Google's raster tiles,
+     and Google's vector map. The last is the only one that can tilt, and the
+     only one whose styling lives outside this repo. */
   $("map-btn").addEventListener("click", (e) => {
-    const order = ["auto", "google", "osm"];
-    const next = order[(order.indexOf(settings.mapProvider) + 1) % order.length];
-    if (next === "google" && !settings.mapKey) { toast("Google needs a key. Set one in Keys first."); return; }
-    save({ mapProvider: next });
+    const order = ["osm", "flat", "3d"];
+    const next = order[(order.indexOf(settings.mapMode) + 1) % order.length];
+    if (next !== "osm" && !settings.mapKey) {
+      toast("Google needs a key. Set one in Keys first.");
+      return;
+    }
+    if (next === "3d" && !settings.mapId) {
+      toast("3D needs a Map ID. Add one in Keys first.");
+      return;
+    }
+    save({ mapMode: next });
     e.currentTarget.textContent = mapLabel();
     mapview.swap();
     renderDiag();
@@ -508,6 +518,14 @@ export function init() {
       spotifyId: $("sp-id").value.trim(),
       setupDone: true
     });
+    // A Map ID that has just been pasted is a request for 3D; nobody enters
+    // one meaning to keep riding on flat tiles.
+    if (settings.mapId && settings.mapMode === "flat") {
+      save({ mapMode: "3d" });
+      toast("3D map on");
+    } else if (!settings.mapId && settings.mapMode === "3d") {
+      save({ mapMode: "flat" });          // the ID it depended on is gone
+    }
     layer("");
     // Grant is skippable, so Start must also start the sensors — both are
     // idempotent, so tapping Grant first costs nothing.
@@ -664,9 +682,8 @@ export function init() {
 }
 
 function mapLabel() {
-  return settings.mapProvider === "auto"
-    ? "Auto · " + (mapview.providerName() === "google" ? "Google" : "OSM")
-    : settings.mapProvider === "google" ? "Google" : "OpenStreetMap";
+  return settings.mapMode === "osm" ? "OpenStreetMap"
+       : settings.mapMode === "3d" ? "Google 3D" : "Google flat";
 }
 
 function showMsg(text) {
@@ -762,7 +779,7 @@ function renderDiag() {
       : obd.status.state === "idle" ? "not connected" : escapeHtml(obd.status.state)) +
     "<br><b>Map mode</b> " + (mapview.providerName() !== "google"
       ? "OpenStreetMap — flat by design"
-      : escapeHtml(mapview.mapMode() || "loading")) +
+      : escapeHtml(mapview.renderMode() || "loading")) +
     "<br><b>Marks</b> " + (marks.count() ? marks.count() + " placed" : "none placed") +
     "<br><b>Notifications</b> " + (!alerts.hasShell()
       ? "app only"
