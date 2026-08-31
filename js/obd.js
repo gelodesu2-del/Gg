@@ -7,9 +7,11 @@
    the BLE half and lets the whole protocol run without the phone.
 
    The ELM327 is a modem at heart: one command at a time, answer terminated by
-   a ">" prompt. Yamaha's bus is K-line, which ATSP0 auto-detects — the first
-   engine query can sit in SEARCHING for several seconds, so the probe timeout
-   is generous and later ones are not.
+   a ">" prompt. Yamaha's bus is K-line rather than CAN, so the first engine
+   query can sit in SEARCHING for several seconds and the probe timeouts are
+   generous where the polling ones are not. ATSP0 should find the bus by
+   itself; when it does not, onConnected walks the protocols by hand and
+   remembers the one that answered.
 
    PIDs are probed directly instead of trusting the 0100 support bitmask —
    small-bike ECUs are exactly where the bitmask lies. Fuel (012F) is the one
@@ -25,6 +27,8 @@ export const status = {
   device: "",
   pids: { rpm: null, temp: null, fuel: null },   // null = unknown, true/false = probed
   volts: null,
+  proto: "",              // which bus the ECU actually answered on
+  probeStep: "",          // "2/5" while the ladder is being walked
   error: ""
 };
 
@@ -114,6 +118,7 @@ const events = {
   state(s) {
     if (s === "connected") { onConnected(); return; }
     if (s === "disconnected" || s.startsWith("error")) {
+      gen++;                       // abandons a handshake still in flight
       stopPolling();
       const wanted = status.state !== "idle";
       set({ state: s.startsWith("error") ? "error" : "idle", error: s.startsWith("error") ? s.slice(6) : "" });
@@ -158,19 +163,74 @@ const hexAfter = (resp, marker) => {
   return hex.length >= 2 ? hex : null;
 };
 
-async function onConnected() {
-  set({ state: "init", error: "" });
-  await cmd("ATZ", 3500);
-  for (const c of ["ATE0", "ATL0", "ATS0", "ATH0", "ATSP0"]) await cmd(c, 1500);
+/* ATSP0 is supposed to find the bus on its own, and on a car it does. Bike
+   K-line is where the cheap clones give up: auto-detect times out and the
+   dongle reports NO DATA as if the ECU were absent. So when auto finds
+   nothing, walk the protocols the NMAX could plausibly be on, and remember
+   whichever answered — the ladder then runs once, ever. */
+const PROTOCOLS = [
+  ["0", "auto"],
+  ["5", "ISO 14230 fast"],       // KWP2000 fast init: the usual Yamaha answer
+  ["4", "ISO 14230 slow"],       // 5-baud init
+  ["3", "ISO 9141-2"],
+  ["6", "CAN 11/500"]
+];
+const protoName = (code) => {
+  for (const p of PROTOCOLS) if (p[0] === code) return p[1];
+  return "protocol " + code;
+};
 
-  // First engine query wakes the bus — SEARCHING can take a while on K-line.
-  set({ state: "probing" });
-  await cmd("0100", 9000);
+/* A generation guard. The ladder can run for the better part of a minute,
+   and the reconnect timer fires at ten seconds — without this, a dropout
+   mid-probe leaves two handshakes racing over one dongle. */
+let gen = 0;
+
+async function onConnected() {
+  const g = ++gen;
+  set({ state: "init", error: "", proto: "" });
+  await cmd("ATZ", 3500);
+  if (g !== gen) return;
+  for (const c of ["ATE0", "ATL0", "ATS0", "ATH0"]) await cmd(c, 1500);
+  if (g !== gen) return;
+
+  // Does anything on the bus answer? RPM first, coolant as the second
+  // opinion, so an ECU without 010C is not written off as a dead bus.
+  const alive = async () => {
+    if (hexAfter(await cmd("010C", 4000), "410C")) return true;
+    if (g !== gen) return false;
+    return !!hexAfter(await cmd("0105", 4000), "4105");
+  };
+
+  const order = [];
+  if (settings.obdProto) order.push(settings.obdProto);
+  for (const pr of PROTOCOLS) if (!order.includes(pr[0])) order.push(pr[0]);
+
+  let found = null;
+  for (let i = 0; i < order.length; i++) {
+    const code = order[i];
+    set({ state: "probing", proto: protoName(code),
+          probeStep: order.length > 1 ? (i + 1) + "/" + order.length : "" });
+    await cmd("ATSP" + code, 1500);
+    if (g !== gen) return;
+    await cmd("0100", 9000);         // wakes the bus; SEARCHING lives here
+    if (g !== gen) return;
+    if (await alive()) { found = code; break; }
+    if (g !== gen) return;
+  }
+
+  // Nothing answered anywhere. Stay on auto and probe anyway rather than
+  // refusing to connect — voltage still works, and so does a bus that only
+  // speaks up once the engine is running.
+  if (found === null) await cmd("ATSP0", 1500);
+  else save({ obdProto: found });
+  if (g !== gen) return;
+  set({ proto: protoName(found === null ? "0" : found), probeStep: "" });
 
   const probe = async (pid) => {
     for (let i = 0; i < 2; i++) {
       const h = hexAfter(await cmd("01" + pid, 3000), "41" + pid);
       if (h) return true;
+      if (g !== gen) return false;
     }
     return false;
   };
@@ -179,6 +239,7 @@ async function onConnected() {
     temp: await probe("05"),
     fuel: await probe("2F")
   };
+  if (g !== gen) return;
   set({ state: "polling", pids });
   startPolling();
 }
@@ -252,11 +313,12 @@ export async function connectWeb() {
 }
 
 export function disconnect() {
+  gen++;
   if (reconnectT) { clearTimeout(reconnectT); reconnectT = null; }
   stopPolling();
-  save({ obdAddr: "", obdName: "", obdKind: "le" });
+  save({ obdAddr: "", obdName: "", obdKind: "le", obdProto: "" });
   if (tr) tr.disconnect();
-  set({ state: "idle", device: "", error: "" });
+  set({ state: "idle", device: "", error: "", proto: "", probeStep: "" });
   S.rpm = null; S.temp = null; S.fuel = null; S.volts = null;
 }
 

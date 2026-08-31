@@ -209,6 +209,21 @@ neither radio below changes a line of the protocol.
 Which one a dongle used is remembered, so a reconnect after a dropout goes
 straight back over the same radio.
 
+**Finding the bus.** `ATSP0` is meant to auto-detect, and on a car it does. Bike
+K-line is where the cheap clones give up: auto-detect times out and the dongle
+reports `NO DATA` as if the ECU were absent. So when auto finds nothing, the app
+walks the protocols the NMAX could plausibly be on — ISO 14230 fast init first,
+which is the usual Yamaha answer, then slow init, ISO 9141-2, CAN — and treats a
+reply to either RPM or coolant as proof the bus is live. Whichever answered is
+remembered, so the ladder runs once and every later connection goes straight to
+it. Walking the whole ladder on a bus that answers nothing takes about a minute;
+the status line counts the rungs so it does not look hung, and the connection
+still completes on auto rather than refusing, because voltage works regardless
+and some bikes only speak up with the engine running.
+
+Settings → diagnostics names the protocol that won, alongside which of RPM,
+coolant and fuel actually answered.
+
 Both need **Nearby devices** on Android 12+. The shell asks for each missing
 permission on its own, not for the set as a whole: an install that already held
 location would otherwise never be asked for the Bluetooth pair, and the scan
@@ -311,9 +326,10 @@ with no devtools attached.
   denied. Android's app-info screen, under Permissions, grants it. Turning the
   ignition on matters too: most dongles only power up with the key.
 - **Connected, but the ECU never answers** — the NMAX speaks K-line rather than
-  CAN, so `ATSP0` sits in SEARCHING for several seconds on the first query.
-  Give it ten. Still nothing means the adapter is not reaching the bus: check
-  the 3-pin coupler is fully seated.
+  CAN, so the first query sits in SEARCHING for several seconds, and the
+  protocol ladder behind it can take a minute. Let it finish. Still nothing
+  means the adapter is not reaching the bus: check the 3-pin coupler is fully
+  seated and the ignition is on.
 
 ---
 

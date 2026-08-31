@@ -49,6 +49,7 @@ const defaults = {
   obdAddr: "",
   obdName: "",
   obdKind: "le",       // "le" or "spp" — which Bluetooth the dongle speaks
+  obdProto: "",        // ELM327 protocol number that reached the ECU
   setupDone: false
 };
 

@@ -231,7 +231,11 @@ export function init() {
         "Nothing after ten seconds? Pair it in Android\u2019s Bluetooth settings " +
         "first (PIN 1234), then scan again." :
       st.state === "connecting" ? "Connecting to <b>" + escapeHtml(st.device) + "</b>…" :
-      st.state === "init" || st.state === "probing" ? "Talking to the ECU — first contact can take ten seconds…" :
+      st.state === "init" ? "Waking the dongle…" :
+      st.state === "probing" ? "Talking to the ECU over <b>" + escapeHtml(st.proto || "auto") +
+        "</b>" + (st.probeStep ? " (" + st.probeStep + ")" : "") +
+        " — first contact takes about ten seconds, and a bus that will not " +
+        "answer costs a minute of trying the rest." :
       st.state === "polling" ? "<b>" + escapeHtml(st.device || "Connected") + "</b> · RPM " + tick(st.pids.rpm) +
         " · temp " + tick(st.pids.temp) + " · fuel " + tick(st.pids.fuel) +
         (st.volts ? " · " + st.volts.toFixed(1) + " V" : "") :
@@ -578,7 +582,8 @@ function renderDiag() {
           ? '<span class="bad">' + escapeHtml(mapview.routeStatus()) + "</span>"
           : (mapview.routeInfo() ? '<span class="ok">routed</span>' : "no destination"))) +
     "<br><b>OBD</b> " + (obd.status.state === "polling"
-      ? '<span class="ok">' + escapeHtml(obd.status.device || "live") + "</span> · rpm " + (obd.status.pids.rpm ? "✓" : "✗") +
+      ? '<span class="ok">' + escapeHtml(obd.status.device || "live") + "</span> · " +
+        escapeHtml(obd.status.proto || "auto") + " · rpm " + (obd.status.pids.rpm ? "✓" : "✗") +
         " temp " + (obd.status.pids.temp ? "✓" : "✗") + " fuel " + (obd.status.pids.fuel ? "✓" : "✗") +
         (obd.status.volts ? " · " + obd.status.volts.toFixed(1) + " V" : "")
       : obd.status.state === "idle" ? "not connected" : escapeHtml(obd.status.state)) +
