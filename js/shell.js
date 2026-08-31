@@ -10,7 +10,7 @@ import * as sos from "./sos.js";
 import * as nav from "./nav.js";
 import * as obd from "./obd.js";
 import * as alerts from "./alerts.js";
-import * as hazards from "./hazards.js";
+import * as marks from "./marks.js";
 import * as speedlimit from "./speedlimit.js";
 import { SERVICE_DEFAULTS } from "./state.js";
 
@@ -279,13 +279,6 @@ export function init() {
          "Nothing to report. Warm-up, service and road warnings appear here as they happen.");
     $("al-cb").textContent = b.length ? b.length + " active" : "clear";
 
-    if (hazards.configured() && hazards.status()) {
-      const warn = document.createElement("div");
-      warn.className = "al-empty";
-      warn.textContent = "Hazard feed unreachable: " + hazards.status();
-      $("al-bike").appendChild(warn);
-    }
-
     const ph = alerts.phone();
     fill($("al-phone"), ph.map((n) => row(n.read ? "info" : "crit",
       (n.app ? n.app + " · " : "") + (n.title || ""), n.body, alerts.fmtAge(n.at))),
@@ -515,10 +508,6 @@ export function init() {
       spotifyId: $("sp-id").value.trim(),
       setupDone: true
     });
-    // setUrl clears whatever the previous feed said before asking the new one.
-    if ($("hz-url").value.trim() !== (settings.hazardUrl || "")) {
-      hazards.setUrl($("hz-url").value.trim());
-    }
     layer("");
     // Grant is skippable, so Start must also start the sensors — both are
     // idempotent, so tapping Grant first costs nothing.
@@ -540,6 +529,48 @@ export function init() {
 
   // ---- map follow / recenter ----
   // The map notifies on a drag; the button resumes following.
+  /* ---- tagging spots on the map ---- */
+  /* Two taps: the button arms it, the map places it. Tapping an existing mark
+     removes it instead, which is the only sane thing a second tap on the same
+     spot could mean. */
+  let tagging = false;
+
+  function setTagging(on) {
+    tagging = on;
+    $("tag-btn").setAttribute("aria-pressed", String(on));
+    $("map-slot").classList.toggle("tagging", on);
+  }
+
+  function drawMarks() {
+    mapview.setMarks(marks.all(), (id) => {
+      marks.remove(id);
+      drawMarks();
+      toast("Mark removed");
+    });
+  }
+
+  $("tag-btn").addEventListener("click", () => {
+    if (!mapview.ready()) { toast("Map is not up yet"); return; }
+    setTagging(!tagging);
+    if (tagging) toast("Tap the spot on the map");
+  });
+
+  mapview.setTapHandler((lat, lng) => {
+    if (!tagging) return;
+    setTagging(false);
+    const existing = marks.at(lat, lng, 25);
+    if (existing) { marks.remove(existing.id); drawMarks(); toast("Mark removed"); return; }
+    marks.add(lat, lng);
+    drawMarks();
+    toast("Marked · " + marks.count() + " on the map");
+  });
+  marks.setOnChange(drawMarks);
+  // Registers whatever was saved from previous rides. The map is not up yet,
+  // so this only parks the list with mapview — which pushes it the moment a
+  // provider is ready. Without this call a reload showed no marks until one
+  // was added or removed.
+  drawMarks();
+
   window.__nmaxMapFollow = (on) => { $("recenter-btn").hidden = on; };
   $("recenter-btn").addEventListener("click", () => {
     mapview.setFollow(true);
@@ -732,14 +763,7 @@ function renderDiag() {
     "<br><b>Map mode</b> " + (mapview.providerName() !== "google"
       ? "OpenStreetMap — flat by design"
       : escapeHtml(mapview.mapMode() || "loading")) +
-    "<br><b>Hazards</b> " + (!hazards.configured()
-      ? "no feed set"
-      : hazards.status()
-        ? '<span class="bad">' + escapeHtml(hazards.status()) + "</span>"
-        : hazards.checkedAt()
-          ? '<span class="ok">' + hazards.hazards().length + " active</span> · checked " +
-            Math.max(1, Math.round((Date.now() - hazards.checkedAt()) / 60000)) + " min ago"
-          : "waiting for a fix") +
+    "<br><b>Marks</b> " + (marks.count() ? marks.count() + " placed" : "none placed") +
     "<br><b>Notifications</b> " + (!alerts.hasShell()
       ? "app only"
       : alerts.listenerOn() ? '<span class="ok">on</span>' : "access not granted") +
@@ -820,7 +844,6 @@ function syncSetup() {
   $("map-key").value = settings.mapKey || "";
   $("map-id").value = settings.mapId || "";
   $("sp-id").value = settings.spotifyId || "";
-  $("hz-url").value = settings.hazardUrl || "";
 }
 
 export { goto, syncSetup };

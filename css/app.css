@@ -266,6 +266,13 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 #range-ring{stroke:rgba(var(--neon-rgb),.30)}
 .mk-o{fill:rgba(var(--neon-rgb),.35)}
 .mk-i{fill:var(--neon)}
+/* Dragging the map hands "you are here" to a marker pinned to the ground, so
+   the fixed arrow steps aside rather than looking like it is being dragged. */
+.mapwrap.browsing .mk-o,
+.mapwrap.browsing .mk-i,
+.mapwrap.browsing #range-ring{display:none}
+.bike-pin{width:.95em; height:.95em; border-radius:50%; background:var(--neon);
+  border:2px solid var(--panel); box-shadow:0 0 .6em rgba(var(--neon-rgb),.6)}
 .chip{position:absolute; z-index:3; font-size:1.15em; letter-spacing:.17em; text-transform:uppercase;
   color:var(--neon); padding:.3em .6em; border:1px solid rgba(var(--neon-rgb),.3); background:var(--veil)}
 .chip b{color:var(--ink); font-weight:400}
@@ -278,6 +285,21 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .map-btn svg{width:100%; height:100%; fill:currentColor}
 .map-btn:active{background:rgba(var(--neon-rgb),.18)}
 .map-btn.re{border-color:var(--gold); color:var(--gold)}
+.map-btn.tag{color:var(--mint); border-color:rgba(var(--mint-rgb),.35)}
+.map-btn.tag[aria-pressed="true"]{background:var(--mint); color:var(--ground); border-color:var(--mint)}
+.map-btn.tag svg{stroke:currentColor; fill:none}
+
+/* Tag mode: the map takes the next tap, so it says so. */
+.chip.tagmode{top:1.1em; left:50%; transform:translateX(-50%); display:none;
+  color:var(--mint); border-color:rgba(var(--mint-rgb),.5)}
+.mapwrap.tagging .chip.tagmode{display:block}
+.mapwrap.tagging{cursor:crosshair}
+
+/* A tagged spot: the same three waves as the button that placed it. */
+.mark-pin{width:1.6em; height:1.6em; cursor:pointer;
+  color:var(--mint); filter:drop-shadow(0 0 .35em rgba(var(--mint-rgb),.5))}
+.mark-pin svg{width:100%; height:100%; stroke:currentColor; fill:none; stroke-width:2.4;
+  stroke-linecap:round}
 
 /* Top-left stack: the next manoeuvre, and under it the limit for the road you
    are on. Square, like everything else here — the rounded look of the phone

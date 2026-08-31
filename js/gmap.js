@@ -21,6 +21,9 @@ let lastCenter = 0;
 let lastHeadingAt = 0;
 let lastHeading = 0;
 let destMarker = null;
+let bikeMarker = null;      // stands in for the centre overlay while browsing
+let markPins = [];
+let onTap = null;
 
 /* The map is greyscale by design and does not follow the theme. Points of
    interest are removed entirely — a dash needs the road network, not
@@ -155,6 +158,14 @@ function init() {
   map.addListener("dragstart", () => {
     follow = false;
     if (window.__nmaxMapFollow) window.__nmaxMapFollow(false);
+    showBikeMarker(true);
+  });
+  // The library's own click event, so the projection is its problem rather
+  // than ours — the raster path rotates its container with CSS, and pixel
+  // maths of our own would have to undo that.
+  map.addListener("click", (e) => {
+    if (!onTap || !e || !e.latLng) return;
+    onTap(e.latLng.lat(), e.latLng.lng());
   });
   document.getElementById("map-none").classList.add("hide");
   document.getElementById("map-slot").classList.add("live");
@@ -192,11 +203,61 @@ export function setFollow(on) {
     if (vector && map) map.setHeading(0);
     else if (rotor) rotor.style.transform = "";
   }
+  showBikeMarker(!on);
 }
+
+/* While following, the bike is at the centre of the map and the fixed overlay
+   arrow is exactly right. The moment the map is dragged, that arrow stops
+   meaning "you are here" and starts looking like an icon being dragged around
+   — so it is swapped for a real marker pinned to the ground. */
+function showBikeMarker(on) {
+  const slot = document.getElementById("map-slot");
+  if (slot) slot.classList.toggle("browsing", on);
+  if (!map || !window.google) return;
+  if (!on) {
+    if (bikeMarker) { bikeMarker.setMap(null); bikeMarker = null; }
+    return;
+  }
+  if (S.lat === null) return;
+  const pos = { lat: S.lat, lng: S.lng };
+  if (bikeMarker) { bikeMarker.setPosition(pos); return; }
+  bikeMarker = new google.maps.Marker({
+    position: pos, map, zIndex: 60,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE, scale: 6,
+      fillColor: accent(), fillOpacity: 1, strokeColor: "#0A0C10", strokeWeight: 2
+    }
+  });
+}
+
+/* Tagged spots. Redrawn wholesale — there are at most a couple of hundred and
+   they only change on a tap. */
+export function setMarks(list, onPick) {
+  if (!map || !window.google) return;
+  for (const m of markPins) m.setMap(null);
+  markPins = [];
+  for (const mk of list) {
+    const pin = new google.maps.Marker({
+      position: { lat: mk.lat, lng: mk.lng }, map, zIndex: 50,
+      icon: {
+        path: "M -7 -4 q 3.5 -4 7 0 q 3.5 4 7 0 M -7 0 q 3.5 -4 7 0 q 3.5 4 7 0 M -7 4 q 3.5 -4 7 0 q 3.5 4 7 0",
+        strokeColor: mint(), strokeWeight: 2.2, strokeOpacity: 1, fillOpacity: 0, scale: 1.1
+      }
+    });
+    pin.addListener("click", () => { if (onPick) onPick(mk.id); });
+    markPins.push(pin);
+  }
+}
+
+export function setTapHandler(fn) { onTap = fn; }
 export function following() { return follow; }
 
 export function update(now) {
-  if (!map || !follow) return;
+  if (!map) return;
+  if (!follow) {                        // browsing: the marker still follows the bike
+    if (bikeMarker && S.lat !== null) bikeMarker.setPosition({ lat: S.lat, lng: S.lng });
+    return;
+  }
 
   if (vector) {
     // setHeading eases the camera rather than jumping it, so calling it every
@@ -252,11 +313,15 @@ let routeDest = null;
 let routeCheckAt = 0;
 let dirError = null;
 
-function accent(a) {
-  let rgb = "0,245,140";
-  try { rgb = getComputedStyle(document.getElementById("app")).getPropertyValue("--neon-rgb").trim() || rgb; } catch (e) { /* default */ }
+function token(name, fallback, a) {
+  let rgb = fallback;
+  try {
+    rgb = getComputedStyle(document.getElementById("app")).getPropertyValue(name).trim() || fallback;
+  } catch (e) { /* default */ }
   return a ? "rgba(" + rgb + "," + a + ")" : "rgb(" + rgb + ")";
 }
+function accent(a) { return token("--neon-rgb", "0,245,140", a); }
+function mint(a) { return token("--mint-rgb", "124,255,196", a); }
 
 function clearRoute() {
   if (routeLine) { routeLine.setMap(null); routeLine = null; }

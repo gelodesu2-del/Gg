@@ -210,6 +210,15 @@ bike is** wins, so an expressway overhead does not lend its limit to the
 service road beneath it. Diagnostics shows which road matched and how far away
 it was. Turn the whole thing off with Settings → **Limits from the road**.
 
+### The bike marker while you browse
+
+Following, the bike is at the centre of the map and a fixed arrow drawn over
+the middle is exactly right. Drag the map to look ahead and that arrow stops
+meaning *you are here* — it just looks like an icon being dragged around. So
+the moment follow breaks, the fixed arrow hides and a real marker pinned to the
+ground takes over, still tracking the bike as it moves. Recentring puts it
+back.
+
 ### The map is grey on purpose
 
 Colour on this screen means *the app is telling you something* — the route, the
@@ -240,55 +249,24 @@ The two sources can sit a constant offset apart, so **a calibration taken on
 one is not valid on the other**. Which source produced it is recorded, and
 diagnostics says *recalibrate* when they disagree.
 
-### Flood and closure warnings
+### Tagging spots on the map
 
-Traffic is deliberately not here. Google already routes around it with live
-data and no model is going to beat that. What no routing API has for Metro
-Manila is **flooding and short-notice closures** — those live in prose, on MMDA
-and PAGASA pages and in the news, which is the shape of problem a model is
-actually good at: read the mess, emit geofences.
+The `≋` button on the right of the map arms tagging; the next tap on the map
+places a mark there. Tapping a mark — on the map, or a second tap on the same
+spot — removes it. A mark within about 220 m **and roughly in front of the
+bike** takes the road-warning chip, so a spot already ridden past stops warning
+about itself; standing still there is no "in front", so proximity alone
+decides. Marks also appear in the Bike list with their distance.
 
-`worker/` is a **separate Cloudflare Worker**, not part of this deployment. The
-dash is static files with no build step; bolting a function onto it would risk
-a working deployment for a feature that is allowed to fail. If the Worker is
-down or unset, the dash simply has no hazards and says nothing about it.
+Two taps within 15 m of each other are treated as a miss-tap rather than two
+marks. Everything is stored on this phone and nothing is fetched.
 
-**Deploying it**
-
-```bash
-cd worker
-npm install
-npx wrangler kv namespace create HAZARDS   # put the id in wrangler.toml
-npx wrangler secret put ANTHROPIC_API_KEY  # a separate Anthropic API account
-npx wrangler deploy
-```
-
-Then paste the Worker's URL into Settings → **Keys** → *Hazard feed*. Until you
-do, none of this runs.
-
-**What it costs.** Cost is controlled by the cache, not a cron. A cron scanning
-for floods at 3am while the bike is parked is most of the bill for none of the
-value, so the model runs only when a rider asks and the cached answer has aged
-out — 20 minutes, or 8 km of travel, whichever comes first. At roughly \$0.16 a
-scan on Claude Opus 5, a few rides a day lands around \$10–15 a month. `MODEL`
-in `wrangler.toml` switches it to `claude-haiku-4-5` for about a fifth of that,
-at some loss on ambiguous reports. The server-side web search tool also bills
-per search on top of tokens — check the current rate before settling on a
-cadence. Note that this is an **Anthropic API account**, billed separately from
-a Claude subscription.
-
-**Why it only ever advises.** A model reading news for flood locations is right
-often enough to be worth showing and wrong often enough that a silent detour
-would be the wrong response. So a hazard arrives as a warning carrying its
-source, its age and its own confidence, and the rider decides. Nothing reroutes
-by itself. Anything the Worker returns without a real position on the map is
-dropped by the client before it can become a pin — a hazard without coordinates
-is a sentence, not a hazard.
-
-On the dash a hazard ahead takes the road-warning chip, outranking a logged
-pothole; in the alerts panel it sits in the **Bike** list with its distance and
-age. "Ahead" means within about 70° of where the bike is pointing, so a flood
-already ridden through stops warning about itself.
+**This replaced a hazard feed** that read MMDA and PAGASA advisories through
+Claude and guessed coordinates from the prose. `worker/` still holds that Worker
+and it still works, but nothing in the app calls it — the rider riding past the
+water knows where it is, and a model reading the news does not. Deploy it and
+wire it back up if the hand-placed version ever proves too much work; the
+deployment steps are in that directory's own history.
 
 ### Phone notifications on the dash
 
@@ -445,9 +423,8 @@ with no devtools attached.
   logged. Settings → **Odometer offset** adds what the bike had on it the day
   logging started. Tap any service row to change its interval or record that
   it was done.
-- **No hazards ever appear** — Settings → diagnostics has a **Hazards** line.
-  *no feed set* means the Worker URL is missing; an error there is the Worker
-  itself. An empty list on a dry day is the normal and correct answer.
+- **A tagged mark does not warn** — it only takes the chip when it is in front
+  of the bike, not behind. Diagnostics has a **Marks** line with the count.
 - **The dongle never appears in the scan** — it is a classic-Bluetooth unit,
   not BLE. Pair it in Android's Bluetooth settings (PIN usually `1234`), then
   scan again: paired dongles are listed straight away, tagged `paired`.

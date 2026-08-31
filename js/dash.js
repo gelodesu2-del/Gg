@@ -7,7 +7,7 @@ import { nearestRough } from "./trips.js";
 import * as nav from "./nav.js";
 import * as mapview from "./mapview.js";
 import * as alerts from "./alerts.js";
-import * as hazards from "./hazards.js";
+import * as marks from "./marks.js";
 import * as speedlimit from "./speedlimit.js";
 
 const $ = (id) => document.getElementById(id);
@@ -254,9 +254,9 @@ export function renderSlow(now) {
   // a pothole, so whichever is worse takes the slot.
   if (now - roughAt > 2500) { roughAt = now; rough = nearestRough(); }
   S.nearJolt = rough;
-  const flood = hazards.ahead();
-  const text = flood
-    ? (flood.kind === "flood" ? "Flood" : "Closed") + " · " + flood.road + " · " + flood.d + " m"
+  const tagged = marks.ahead();
+  const text = tagged
+    ? "Marked · " + tagged.d + " m"
     : rough && S.speed > 12
       ? "Rough road · " + Math.round(rough.d / 5) * 5 + " m"
       : "";

@@ -31,6 +31,7 @@ export function load() {
 }
 
 export function update(now) {
+  applyPending();
   if (active) active.update(now);
 }
 
@@ -56,6 +57,34 @@ export function routeInfo() {
 export function routeStatus() {
   return active && active.routeStatus ? active.routeStatus() : null;
 }
+/* Tagged spots and the tap that places them.
+
+   Both are registered before the map script has finished loading, and a
+   provider swap throws away whatever was registered with the old one — so
+   they are held here and re-applied the moment a map is actually up. */
+let wantMarks = null, wantPick = null, wantTap = null, applied = false;
+
+export function setMarks(list, onPick) {
+  wantMarks = list;
+  wantPick = onPick;
+  if (active && active.setMarks && active.ready && active.ready()) active.setMarks(list, onPick);
+}
+export function setTapHandler(fn) {
+  wantTap = fn;
+  if (active && active.setTapHandler) active.setTapHandler(fn);
+}
+
+/* Called from the frame loop, which is already running: one boolean compare
+   per frame is cheaper than another timer. */
+function applyPending() {
+  const up = !!(active && active.ready && active.ready());
+  if (!up) { applied = false; return; }
+  if (applied) return;
+  applied = true;
+  if (wantTap && active.setTapHandler) active.setTapHandler(wantTap);
+  if (wantMarks && active.setMarks) active.setMarks(wantMarks, wantPick);
+}
+
 /* Whether the map is drawing in 3D, and why not when it is not. */
 export function mapMode() {
   return active && active.mapMode ? active.mapMode() : "";
@@ -71,6 +100,7 @@ export function setFollow(on) { if (active && active.setFollow) active.setFollow
 export function following() { return active && active.following ? active.following() : true; }
 
 export function swap() {
+  applied = false;
   if (osm.destroy) osm.destroy();
   const slot = document.getElementById("map-slot");
   slot.classList.remove("live");

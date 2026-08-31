@@ -13,7 +13,7 @@
 import { CFG, S, settings, SERVICE_DEFAULTS } from "./state.js";
 import * as store from "./store.js";
 import * as trips from "./trips.js";
-import * as hazards from "./hazards.js";
+import * as marks from "./marks.js";
 import * as speedlimit from "./speedlimit.js";
 
 const MAX_NOTES = 40;
@@ -51,14 +51,10 @@ export function bike() {
     add("warn", "Over the limit",
         Math.round(S.speed) + " in a " + lim + " zone" + (road ? " · " + road : ""));
   }
-  // Flooding and closures, from the advisory feed. Severity follows the
-  // report's own confidence: a model reading news is not an eyewitness, and
-  // the list should not pretend otherwise.
-  for (const h of hazards.near(1500)) {
-    add(h.severity === "impassable" && h.confidence !== "low" ? "crit" : "warn",
-        (h.kind === "flood" ? "Flood" : "Closure") + " · " + h.road,
-        h.d + " m away · " + (hazards.fmtAge(h.reported) || "time unknown") +
-        " · " + h.confidence + " confidence");
+  // Places the rider tagged by hand. Whoever put it there knew why, so it
+  // needs no severity of its own beyond being close.
+  for (const m of marks.near(400)) {
+    add("warn", "Marked spot", m.d + " m away");
   }
 
   if (S.nearJolt) {
