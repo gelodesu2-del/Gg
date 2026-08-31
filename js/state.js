@@ -48,6 +48,7 @@ const defaults = {
   cal: null,
   obdAddr: "",
   obdName: "",
+  obdKind: "le",       // "le" or "spp" — which Bluetooth the dongle speaks
   setupDone: false
 };
 

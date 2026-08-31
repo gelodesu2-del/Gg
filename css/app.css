@@ -508,3 +508,10 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .svcnote b{color:var(--ink-2)}
 
 @media (prefers-reduced-motion:reduce){ *{transition:none !important; animation:none !important} }
+
+/* Transport tag in the dongle picker. */
+.s-row .tag {
+  font-size: .62em; letter-spacing: .08em; text-transform: uppercase;
+  padding: .1em .4em; border-radius: 3px; vertical-align: middle;
+  border: 1px solid var(--ink-3); color: var(--ink-3);
+}

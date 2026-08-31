@@ -178,16 +178,41 @@ rules out the usual SDK download and therefore Bubblewrap and Gradle, so the
 script pulls everything from Maven Central instead: aapt2 out of apktool-lib,
 `dx` from Jake Wharton's repackaging, and apksig for signing.
 
-**Two things the APK cannot do that the installed PWA can:**
-
-- **Web Bluetooth does not exist in WebView.** When the OBD layer lands, RPM
-  and fuel will work in the installed PWA and not in this APK.
-- **Spotify login may refuse a WebView.** Some providers block OAuth there. If
-  it does, use the PWA for Spotify — tokens are per-container and do not carry
-  across.
+WebView has no Web Bluetooth, so the shell carries its own bridge instead —
+see **Talking to the dongle** below. The one thing it still cannot promise is
+**Spotify login**, which some providers refuse inside a WebView.
 
 Signed with a self-generated key, v2 scheme, `minSdk 24 / targetSdk 33`. It is
 not for distribution and is not on any store.
+
+> **Keep `android/.build/out/dash.p12`.** Android only installs an update over
+> an app signed by the same key. The keystore is deliberately not committed —
+> this repository is public — so it must be kept somewhere else and dropped
+> back at that path before a rebuild. Build without it and `build.sh` makes a
+> fresh key, whose APK will only install after uninstalling the old app, taking
+> every trip, setting and calibration with it.
+
+### Talking to the dongle
+
+`NMAXShell.bt*` moves bytes; the whole ELM327 dialect lives in `js/obd.js`, so
+neither radio below changes a line of the protocol.
+
+- **Bluetooth LE** — the 4.0 dongles. Discovered by scanning; no pairing.
+  Rather than a lookup table of clones, the shell takes any service offering a
+  notifying and a writable characteristic, preferring the well-known UART UUIDs
+  (`FFF0`, `FFE0`, Nordic `6E400001`, `18F0`) when several qualify.
+- **Bluetooth classic (RFCOMM/SPP)** — the older dongles, and the Android-side
+  variants of models that ship in both flavours. These never appear in a BLE
+  scan, so the picker lists **paired** devices alongside it, tagged `paired`.
+  Pair the dongle in Android's Bluetooth settings first (PIN usually `1234`).
+
+Which one a dongle used is remembered, so a reconnect after a dropout goes
+straight back over the same radio.
+
+Both need **Nearby devices** on Android 12+. The shell asks for each missing
+permission on its own, not for the set as a whole: an install that already held
+location would otherwise never be asked for the Bluetooth pair, and the scan
+would come back empty with nothing on screen to say why.
 
 Then paste both keys into the setup screen and grant location and motion.
 
@@ -262,8 +287,8 @@ report can name a version.
 
 **The APK does not need reinstalling for this.** It is a shell around the live
 URL, so web changes arrive through exactly the same path. Only a change to the
-native shell itself — permissions, the URL it opens, orientation, the launcher
-icon — needs a new APK, and those almost never change.
+native shell itself — permissions, the Bluetooth bridge, the URL it opens,
+orientation, the launcher icon — needs a new APK, and those are rare.
 
 ### Troubleshooting
 
@@ -279,6 +304,16 @@ with no devtools attached.
   Settings → **Numerals** → *Safe* switches to a face that is already working.
   *Auto* measures at boot and picks on its own.
 - **The dash stutters** — Settings → **Screen effects** off.
+- **The dongle never appears in the scan** — it is a classic-Bluetooth unit,
+  not BLE. Pair it in Android's Bluetooth settings (PIN usually `1234`), then
+  scan again: paired dongles are listed straight away, tagged `paired`.
+- **The scan finds nothing at all, of either kind** — **Nearby devices** is
+  denied. Android's app-info screen, under Permissions, grants it. Turning the
+  ignition on matters too: most dongles only power up with the key.
+- **Connected, but the ECU never answers** — the NMAX speaks K-line rather than
+  CAN, so `ATSP0` sits in SEARCHING for several seconds on the first query.
+  Give it ten. Still nothing means the adapter is not reaching the bus: check
+  the 3-pin coupler is fully seated.
 
 ---
 

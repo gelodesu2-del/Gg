@@ -1,9 +1,10 @@
-/* ELM327 over Bluetooth LE.
+/* ELM327 over Bluetooth.
 
-   Two transports behind one queue. The APK's WebView has no Web Bluetooth, so
-   the native shell exposes a BLE bridge (NMAXShell.bt*) and reports back
-   through window.__nmaxBt; in a plain browser, navigator.bluetooth covers the
-   same ground and lets the whole protocol run without the phone.
+   Transports behind one queue. The APK's WebView has no Web Bluetooth, so the
+   native shell exposes a Bluetooth bridge (NMAXShell.bt*) and reports back
+   through window.__nmaxBt — BLE for the 4.0 dongles, classic serial for the
+   ones that only speak RFCOMM. In a plain browser, navigator.bluetooth covers
+   the BLE half and lets the whole protocol run without the phone.
 
    The ELM327 is a modem at heart: one command at a time, answer terminated by
    a ">" prompt. Yamaha's bus is K-line, which ATSP0 auto-detects — the first
@@ -38,7 +39,17 @@ const shellT = {
   ok() { return !!(window.NMAXShell && typeof window.NMAXShell.btConnect === "function"); },
   scan() { window.NMAXShell.btScan(); },
   stopScan() { try { window.NMAXShell.btStopScan(); } catch (e) {} },
-  connect(addr) { window.NMAXShell.btConnect(addr); },
+  connect(addr, kind) {
+    // btConnect2 arrived with classic-serial support; an older APK has only
+    // the BLE-only btConnect, and a dongle it cannot reach anyway.
+    if (kind === "spp" && typeof window.NMAXShell.btConnect2 === "function") {
+      window.NMAXShell.btConnect2(addr, "spp");
+    } else if (typeof window.NMAXShell.btConnect2 === "function") {
+      window.NMAXShell.btConnect2(addr, "le");
+    } else {
+      window.NMAXShell.btConnect(addr);
+    }
+  },
   disconnect() { try { window.NMAXShell.btDisconnect(); } catch (e) {} },
   write(s) { window.NMAXShell.btWrite(s); }
 };
@@ -97,8 +108,8 @@ let scanCb = () => {};
 
 const events = {
   scan(payload) {
-    const i = payload.indexOf("|");
-    scanCb({ name: payload.slice(0, i) || "(unnamed)", addr: payload.slice(i + 1) });
+    const p = payload.split("|");
+    scanCb({ name: p[0] || "(unnamed)", addr: p[1] || "", kind: p[2] || "le" });
   },
   state(s) {
     if (s === "connected") { onConnected(); return; }
@@ -217,16 +228,19 @@ export function startScan(cb) {
 }
 export function stopScan() { if (tr === shellT) shellT.stopScan(); }
 
-export function connectTo(addr, name) {
+export function connectTo(addr, name, kind) {
   if (!shellT.ok()) return;
   tr = shellT;
-  save({ obdAddr: addr, obdName: name || "" });
+  kind = kind === "spp" ? "spp" : "le";
+  save({ obdAddr: addr, obdName: name || "", obdKind: kind });
   set({ state: "connecting", transport: "shell", device: name || addr, error: "" });
-  shellT.connect(addr);
+  shellT.connect(addr, kind);
 }
 
 export function connectSaved() {
-  if (settings.obdAddr && shellT.ok()) connectTo(settings.obdAddr, settings.obdName);
+  if (settings.obdAddr && shellT.ok()) {
+    connectTo(settings.obdAddr, settings.obdName, settings.obdKind);
+  }
 }
 
 export async function connectWeb() {
@@ -240,7 +254,7 @@ export async function connectWeb() {
 export function disconnect() {
   if (reconnectT) { clearTimeout(reconnectT); reconnectT = null; }
   stopPolling();
-  save({ obdAddr: "", obdName: "" });
+  save({ obdAddr: "", obdName: "", obdKind: "le" });
   if (tr) tr.disconnect();
   set({ state: "idle", device: "", error: "" });
   S.rpm = null; S.temp = null; S.fuel = null; S.volts = null;

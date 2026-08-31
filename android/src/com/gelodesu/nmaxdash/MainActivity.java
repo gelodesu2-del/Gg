@@ -22,7 +22,9 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothSocket;
 import android.bluetooth.BluetoothProfile;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
@@ -30,7 +32,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.webkit.JavascriptInterface;
 import org.json.JSONObject;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.UUID;
 
 /**
@@ -51,7 +58,9 @@ public class MainActivity extends Activity {
 
     private static final String SITE = "nmaxdash.gelodesu2.workers.dev";
     private static final String START = "https://" + SITE + "/";
-    private static final int REQ_LOCATION = 1;
+    private static final int REQ_PERMS = 1;
+    /** Set when a scan arrived before the Bluetooth grant existed. */
+    private boolean scanAfterGrant = false;
 
     private WebView web;
     private final Bridge bridge = new Bridge();
@@ -70,10 +79,17 @@ public class MainActivity extends Activity {
             main.post(new Runnable() { public void run() { stopScan(); } });
         }
         @JavascriptInterface public void btConnect(final String addr) {
-            main.post(new Runnable() { public void run() { doConnect(addr); } });
+            main.post(new Runnable() { public void run() { doConnect(addr, "le"); } });
+        }
+        /* Kept separate from btConnect so an APK and a page of different ages
+           still talk: the page feature-tests this before using it. */
+        @JavascriptInterface public void btConnect2(final String addr, final String kind) {
+            main.post(new Runnable() { public void run() { doConnect(addr, kind); } });
         }
         @JavascriptInterface public void btDisconnect() {
-            main.post(new Runnable() { public void run() { closeGatt(); js("state", "disconnected"); } });
+            main.post(new Runnable() { public void run() {
+                closeGatt(); closeSpp(false); js("state", "disconnected");
+            } });
         }
         @JavascriptInterface public void btWrite(final String s) {
             main.post(new Runnable() { public void run() { doWrite(s); } });
@@ -134,7 +150,7 @@ public class MainActivity extends Activity {
 
         setContentView(web);
         immersive();
-        askForLocation();
+        askForPermissions();
         web.loadUrl(START);
     }
 
@@ -160,20 +176,54 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void askForLocation() {
+    /** Everything the dash needs from the system on this Android version. */
+    private String[] wanted() {
+        if (Build.VERSION.SDK_INT >= 31) {
+            return new String[]{
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT };
+        }
+        return new String[]{
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION };
+    }
+
+    private boolean granted(String perm) {
+        return Build.VERSION.SDK_INT < 23
+            || checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** Asks for whatever is still missing, one permission at a time.
+        Testing them as a group is wrong on an upgrade: an install that already
+        holds location would never be asked for the Bluetooth pair the dongle
+        needs, and the scan would come back empty with nothing on screen to
+        say why. */
+    private void askForPermissions() {
         if (Build.VERSION.SDK_INT < 23) return;
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(Build.VERSION.SDK_INT >= 31
-                ? new String[]{
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT }
-                : new String[]{
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION },
-                REQ_LOCATION);
+        ArrayList<String> missing = new ArrayList<String>();
+        for (String p : wanted()) if (!granted(p)) missing.add(p);
+        if (!missing.isEmpty()) {
+            requestPermissions(missing.toArray(new String[missing.size()]), REQ_PERMS);
+        }
+    }
+
+    private boolean btAllowed() {
+        return Build.VERSION.SDK_INT < 31
+            || (granted(Manifest.permission.BLUETOOTH_SCAN)
+             && granted(Manifest.permission.BLUETOOTH_CONNECT));
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int req, String[] perms, int[] results) {
+        if (req != REQ_PERMS) return;
+        if (scanAfterGrant) {
+            scanAfterGrant = false;
+            if (btAllowed()) doScan();
+            // A second refusal, or a standing "don't ask again", lands here
+            // with no dialog shown, so say where the switch lives.
+            else js("state", "error:allow Nearby devices in app settings");
         }
     }
 
@@ -209,6 +259,18 @@ public class MainActivity extends Activity {
     private BluetoothGatt gatt;
     private BluetoothGattCharacteristic txChar;
 
+    /* Classic Bluetooth serial, for the non-BLE half of the dongle market. */
+    private static final UUID SPP =
+        UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+    /* Written by the reader thread, read by the writer — both off the main
+       thread, so neither may cache a stale reference. */
+    private volatile BluetoothSocket spp;
+    private volatile OutputStream sppOut;
+    /* One thread for writes, so commands reach the dongle in the order the
+       page sent them. The reader gets its own: it blocks for the whole
+       session, and would starve every write if they shared this queue. */
+    private final ExecutorService io = Executors.newSingleThreadExecutor();
+
     private void js(final String type, final String data) {
         main.post(new Runnable() {
             public void run() {
@@ -229,6 +291,11 @@ public class MainActivity extends Activity {
     }
 
     private void doScan() {
+        if (!btAllowed()) {          // resumes in onRequestPermissionsResult
+            scanAfterGrant = true;
+            askForPermissions();
+            return;
+        }
         try {
             BluetoothAdapter a = adapter();
             if (a == null || !a.isEnabled()) { js("state", "error:bluetooth off"); return; }
@@ -238,14 +305,49 @@ public class MainActivity extends Activity {
                     BluetoothDevice d = r.getDevice();
                     String name = null;
                     try { name = d.getName(); } catch (SecurityException e) { /* no perm */ }
-                    js("scan", (name == null ? "" : name) + "|" + d.getAddress());
+                    js("scan", (name == null ? "" : name) + "|" + d.getAddress() + "|le");
                 }
             };
+            listBonded();
             a.getBluetoothLeScanner().startScan(scanCb);
             main.postDelayed(new Runnable() { public void run() { stopScan(); } }, 15000);
         } catch (SecurityException e) {
             js("state", "error:permission");
         }
+    }
+
+    /** Paired classic dongles, which a BLE scan will never show. Vgate sells
+        the iCar2 in both a BLE and a Bluetooth-serial flavour under nearly the
+        same name, so list whichever one is actually in the rider's hand.
+        A classic dongle has to be paired in system settings first — that is
+        what putting it in this list depends on. */
+    private void listBonded() {
+        try {
+            BluetoothAdapter a = adapter();
+            if (a == null) return;
+            for (BluetoothDevice d : a.getBondedDevices()) {
+                String name = null;
+                try { name = d.getName(); } catch (SecurityException e) { /* no perm */ }
+                if (name == null) name = "";
+                if (!looksLikeDongle(d, name)) continue;
+                js("scan", name + "|" + d.getAddress() + "|spp");
+            }
+        } catch (SecurityException e) { /* the LE path reports the same denial */ }
+    }
+
+    private boolean looksLikeDongle(BluetoothDevice d, String name) {
+        String n = name.toLowerCase();
+        if (n.contains("obd") || n.contains("elm") || n.contains("icar")
+         || n.contains("vlink") || n.contains("vgate") || n.contains("viecar")
+         || n.contains("konnwei") || n.contains("scan")) return true;
+        BluetoothClass c = null;
+        try { c = d.getBluetoothClass(); } catch (SecurityException e) { /* no perm */ }
+        if (c == null) return false;
+        // Headphones, phones, laptops and watches are not dongles. Cheap
+        // serial adapters declare no class at all, which is the tell.
+        int major = c.getMajorDeviceClass();
+        return major == BluetoothClass.Device.Major.MISC
+            || major == BluetoothClass.Device.Major.UNCATEGORIZED;
     }
 
     private void stopScan() {
@@ -257,10 +359,12 @@ public class MainActivity extends Activity {
         scanCb = null;
     }
 
-    private void doConnect(String addr) {
+    private void doConnect(String addr, String kind) {
+        if ("spp".equals(kind)) { doConnectSpp(addr); return; }
         try {
             stopScan();
             closeGatt();
+            closeSpp(false);
             BluetoothDevice dev = adapter().getRemoteDevice(addr);
             gatt = dev.connectGatt(this, false, new BluetoothGattCallback() {
                 @Override public void onConnectionStateChange(BluetoothGatt g, int st, int newState) {
@@ -318,7 +422,70 @@ public class MainActivity extends Activity {
         js("state", "connected");
     }
 
+    /** Bluetooth serial: a socket and a reader thread, feeding the same rx
+        events the BLE notifications produce. Everything above this line —
+        the ELM327 dialect, the queue, the PID probe — is unchanged by which
+        of the two got us the bytes. */
+    private void doConnectSpp(final String addr) {
+        BluetoothAdapter a = adapter();
+        if (a == null || !a.isEnabled()) { js("state", "error:bluetooth off"); return; }
+        stopScan();
+        closeGatt();
+        closeSpp(false);
+        final BluetoothDevice dev;
+        try {
+            dev = adapter().getRemoteDevice(addr);
+        } catch (Exception e) { js("state", "error:" + brief(e)); return; }
+
+        new Thread(new Runnable() { public void run() {
+            BluetoothSocket s = null;
+            try {
+                try { adapter().cancelDiscovery(); } catch (Exception e) { /* fine */ }
+                s = dev.createRfcommSocketToServiceRecord(SPP);
+                s.connect();                       // blocks; hence this thread
+            } catch (Exception e) {
+                try { if (s != null) s.close(); } catch (Exception e2) { /* gone */ }
+                js("state", "error:" + brief(e));
+                return;
+            }
+            spp = s;
+            try { sppOut = s.getOutputStream(); } catch (Exception e) { /* read-only? */ }
+            js("state", "connected");
+            byte[] buf = new byte[256];
+            try {
+                InputStream in = s.getInputStream();
+                int n;
+                while ((n = in.read(buf)) > 0) {
+                    js("rx", new String(buf, 0, n, StandardCharsets.ISO_8859_1));
+                }
+            } catch (Exception e) { /* closed here, or the dongle went away */ }
+            closeSpp(true);
+        }}, "spp-reader").start();
+    }
+
+    private void closeSpp(boolean announce) {
+        BluetoothSocket s = spp;
+        spp = null;
+        sppOut = null;
+        if (s == null) return;                 // already torn down; stay quiet
+        try { s.close(); } catch (Exception e) { /* nothing left to do */ }
+        if (announce) js("state", "disconnected");
+    }
+
+    private static String brief(Exception e) {
+        String m = e.getMessage();
+        return m == null || m.length() == 0 ? e.getClass().getSimpleName() : m;
+    }
+
     private void doWrite(String s) {
+        if (spp != null) {
+            final byte[] b = s.getBytes(StandardCharsets.ISO_8859_1);
+            io.execute(new Runnable() { public void run() {
+                try { OutputStream o = sppOut; if (o != null) { o.write(b); o.flush(); } }
+                catch (Exception e) { /* dropped write surfaces as a JS timeout */ }
+            }});
+            return;
+        }
         try {
             if (gatt == null || txChar == null) return;
             txChar.setValue(s.getBytes(StandardCharsets.ISO_8859_1));

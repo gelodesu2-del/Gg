@@ -204,8 +204,12 @@ export function init() {
         if ([...$("obd-list").children].some((r) => r.dataset.addr === dev.addr)) return;
         const row = document.createElement("button");
         row.className = "s-row"; row.type = "button"; row.dataset.addr = dev.addr;
-        row.innerHTML = '<span class="nm">' + escapeHtml(dev.name) + '</span><span class="rc">' + escapeHtml(dev.addr) + "</span>";
-        row.addEventListener("click", () => { obd.stopScan(); obd.connectTo(dev.addr, dev.name); });
+        // Both kinds land in one list; the tag says which radio answered, so a
+        // dongle that shows up only after pairing is recognisable as classic.
+        row.innerHTML = '<span class="nm">' + escapeHtml(dev.name) +
+          (dev.kind === "spp" ? ' <span class="tag">paired</span>' : "") +
+          '</span><span class="rc">' + escapeHtml(dev.addr) + "</span>";
+        row.addEventListener("click", () => { obd.stopScan(); obd.connectTo(dev.addr, dev.name, dev.kind); });
         $("obd-list").appendChild(row);
       });
     } else if (obd.hasWeb()) {
@@ -223,7 +227,9 @@ export function init() {
     const el = $("obd-status");
     if (!el) return;
     el.innerHTML =
-      st.state === "scanning" ? "Scanning… tap your dongle when it appears." :
+      st.state === "scanning" ? "Scanning… tap your dongle when it appears. " +
+        "Nothing after ten seconds? Pair it in Android\u2019s Bluetooth settings " +
+        "first (PIN 1234), then scan again." :
       st.state === "connecting" ? "Connecting to <b>" + escapeHtml(st.device) + "</b>…" :
       st.state === "init" || st.state === "probing" ? "Talking to the ECU — first contact can take ten seconds…" :
       st.state === "polling" ? "<b>" + escapeHtml(st.device || "Connected") + "</b> · RPM " + tick(st.pids.rpm) +
