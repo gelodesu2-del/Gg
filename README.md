@@ -192,6 +192,54 @@ not for distribution and is not on any store.
 > fresh key, whose APK will only install after uninstalling the old app, taking
 > every trip, setting and calibration with it.
 
+### Speed limits from the road
+
+Google's Roads API has speed limits but only under an Asset Tracking licence,
+which a standard Maps key cannot call. **OpenStreetMap's `maxspeed` tag** can,
+needs no key, and covers Metro Manila's named roads reasonably well. On the
+small streets it does not, which is why Settings → **Speed limit** stays the
+floor: where OSM has nothing to say, nothing changes.
+
+Overpass is queried by **area, not position** — one request covers about a
+square kilometre, everything inside it is answered from memory, tiles are kept
+for a fortnight, and no more than one request goes out every thirty seconds.
+The same commute is the same tiles every day.
+
+Among the roads within snapping distance the one running the **same way the
+bike is** wins, so an expressway overhead does not lend its limit to the
+service road beneath it. Diagnostics shows which road matched and how far away
+it was. Turn the whole thing off with Settings → **Limits from the road**.
+
+### The map is grey on purpose
+
+Colour on this screen means *the app is telling you something* — the route, the
+destination, a hazard, the shift bar. A map tinted with the same accent
+competes with all of it, and at a glance the eye cannot separate a lit road
+from a lit instrument. So the map runs on a pure value ramp, near-black ground
+through grey roads, with water the only thing allowed off the grey axis.
+
+**3D needs a vector Map ID.** Tilt, and therefore raised buildings, only exist
+on Google's vector renderer, which is only available with a Map ID. Setting one
+also moves styling into the Cloud console — an inline styles array is ignored
+the moment a Map ID exists, so the greyscale above applies to raster tiles
+only. To get both, create a Map ID with vector rendering enabled and give it a
+dark style there. Settings → diagnostics → **Map mode** says which of the two
+is actually running and why.
+
+### The compass
+
+`deviceorientation` in a WebView arrives slowly and costs a bridge crossing per
+event, which is what made the map lag the bike. The shell reads
+`TYPE_ROTATION_VECTOR` directly instead, converts it to the same convention the
+web event uses so the page's calibration and smoothing apply unchanged, and
+pushes it at 25 Hz with a 0.3° deadband. The map's own rotation is throttled to
+20 Hz on top of that, because `setHeading` eases the camera rather than jumping
+it and calling it every frame queues animations behind each other.
+
+The two sources can sit a constant offset apart, so **a calibration taken on
+one is not valid on the other**. Which source produced it is recorded, and
+diagnostics says *recalibrate* when they disagree.
+
 ### Flood and closure warnings
 
 Traffic is deliberately not here. Google already routes around it with live

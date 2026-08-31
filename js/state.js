@@ -40,6 +40,8 @@ const defaults = {
   alertChannel: "sms",
   smsTemplate: "I may have crashed. Last known position: {link}",
   speedLimit: 60,
+  roadLimits: true,    // take the limit from the road when OSM knows it
+
   mapProvider: "auto",
   mapKey: "",
   mapId: "",

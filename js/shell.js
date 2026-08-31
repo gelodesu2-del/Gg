@@ -11,6 +11,7 @@ import * as nav from "./nav.js";
 import * as obd from "./obd.js";
 import * as alerts from "./alerts.js";
 import * as hazards from "./hazards.js";
+import * as speedlimit from "./speedlimit.js";
 import { SERVICE_DEFAULTS } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
@@ -393,6 +394,7 @@ export function init() {
     $("app").dataset.fx = togSwitch(e.currentTarget, "effects") ? "on" : "off";
   });
   $("lim-in").addEventListener("change", (e) => save({ speedLimit: Math.max(20, Math.min(140, +e.target.value || 60)) }));
+  $("rl-sw").addEventListener("click", (e) => { togSwitch(e.currentTarget, "roadLimits"); });
   $("odo-in").addEventListener("change", (e) => {
     save({ odoOffset: Math.max(0, Math.min(9999999, Math.round(+e.target.value) || 0)) });
     logs.render();
@@ -727,6 +729,9 @@ function renderDiag() {
         " temp " + (obd.status.pids.temp ? "✓" : "✗") + " fuel " + (obd.status.pids.fuel ? "✓" : "✗") +
         (obd.status.volts ? " · " + obd.status.volts.toFixed(1) + " V" : "")
       : obd.status.state === "idle" ? "not connected" : escapeHtml(obd.status.state)) +
+    "<br><b>Map mode</b> " + (mapview.providerName() !== "google"
+      ? "OpenStreetMap — flat by design"
+      : escapeHtml(mapview.mapMode() || "loading")) +
     "<br><b>Hazards</b> " + (!hazards.configured()
       ? "no feed set"
       : hazards.status()
@@ -738,6 +743,12 @@ function renderDiag() {
     "<br><b>Notifications</b> " + (!alerts.hasShell()
       ? "app only"
       : alerts.listenerOn() ? '<span class="ok">on</span>' : "access not granted") +
+    "<br><b>Speed limit</b> " + escapeHtml(speedlimit.status()) +
+    "<br><b>Compass</b> " + (sensors.nativeCompass()
+      ? '<span class="ok">native sensor</span>'
+      : "browser events — slower") +
+      (settings.cal && settings.cal.src && settings.cal.src !== (sensors.nativeCompass() ? "native" : "web")
+        ? ' <span class="bad">· calibrated on the other source, recalibrate</span>' : "") +
     "<br><b>Mount</b> " + (settings.cal
       ? '<span class="ok">calibrated</span> · ' + (settings.cal.pitch ?? "?") + "° · north " +
         (settings.cal.northAlpha === null ? "n/a" : Math.round(settings.cal.northAlpha) + "°")
@@ -755,6 +766,7 @@ function syncSettings() {
   $("crash-sw").classList.toggle("on", settings.crashDetect);
   $("wake-sw").classList.toggle("on", settings.wakeLock);
   $("fx-sw").classList.toggle("on", settings.effects);
+  $("rl-sw").classList.toggle("on", settings.roadLimits !== false);
   $("map-btn").textContent = mapLabel();
   $("edge-btn").textContent = settings.edgeInset[0].toUpperCase() + settings.edgeInset.slice(1);
   $("font-btn").textContent = settings.numeralFont === "auto" ? "Auto"

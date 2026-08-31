@@ -163,21 +163,26 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .cell::before,.alerts::before,.media::before{top:-1px; left:-1px; border-right:0; border-bottom:0}
 .cell::after,.alerts::after,.media::after{bottom:-1px; right:-1px; border-left:0; border-top:0}
 
-.media{padding:.5em .75em; display:flex; align-items:center; gap:.75em}
+/* Art and title on top, transport across the full width beneath. The controls
+   used to share a column with the title and ended up three small targets in
+   the corner of a block — the wrong shape for a gloved thumb. */
+.media{padding:.5em .75em .35em; display:flex; flex-direction:column; gap:.3em}
+.m-top{display:flex; align-items:center; gap:.75em; min-width:0}
 .m-l{flex:1; min-width:0; display:flex; flex-direction:column; gap:.2em}
 .m-src{font-size:1.05em; letter-spacing:.22em; text-transform:uppercase; color:var(--neon); opacity:.85}
 .m-t{font-size:1.4em; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .m-a{font-size:1.1em; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.m-row{display:flex; align-items:center; gap:.5em; margin-top:.1em}
-.m-b{background:transparent; border:0; padding:.15em; cursor:pointer; color:var(--ink-2); display:flex; line-height:0}
-.m-b:active{color:var(--neon)}
-.m-b svg{width:1.35em; height:1.35em; fill:currentColor}
-.m-play svg{width:1.7em; height:1.7em}
-.m-play{color:var(--neon)}
-.m-time{margin-left:auto; font-size:1.15em; color:var(--ink-3); font-variant-numeric:tabular-nums}
-.m-prog{display:block; height:.24em; background:var(--off); margin-top:.15em}
+.m-row{display:flex; align-items:stretch; gap:.4em}
+.m-b{flex:1; background:transparent; border:1px solid var(--edge); padding:.35em; cursor:pointer;
+  color:var(--ink-2); display:flex; align-items:center; justify-content:center; line-height:0}
+.m-b:active{color:var(--neon); border-color:var(--neon)}
+.m-b svg{width:1.7em; height:1.7em; fill:currentColor}
+.m-play{flex:1.6; color:var(--neon); border-color:rgba(var(--neon-rgb),.35)}
+.m-play svg{width:2em; height:2em}
+.m-time{font-size:1.15em; color:var(--ink-3); font-variant-numeric:tabular-nums; flex:none}
+.m-prog{display:block; height:.24em; background:var(--off)}
 .m-prog i{display:block; height:100%; background:var(--neon); box-shadow:0 0 .5em var(--neon); width:0}
-.m-art{width:3.05em; height:3.05em; flex:none; border:1px solid var(--edge); background:var(--panel) center/cover no-repeat}
+.m-art{width:3.4em; height:3.4em; flex:none; border:1px solid var(--edge); background:var(--panel) center/cover no-repeat}
 .m-off{position:absolute; inset:0; display:none; align-items:center; justify-content:center; gap:1.1em; background:var(--veil-strong)}
 .media[data-sp="off"] .m-off{display:flex}
 .m-off-t{font-size:1.35em; color:var(--ink-3)}
@@ -313,8 +318,8 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .ts[hidden]{display:none}
 .ts .k{font-size:1em; letter-spacing:.2em; color:var(--ink-3); text-transform:uppercase}
 .ts .v{font-family:var(--f-num); font-weight:700; font-size:1.9em; line-height:1; color:var(--num-ink)}
-.ts.obd .v{color:var(--ink-3)}
-.ts.obd.live .v{color:var(--num-ink)}
+.ts .dest{font-family:var(--f-mono); font-size:1.5em; color:var(--ink);
+  max-width:16em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .note{border-color:rgba(var(--mint-rgb),.4); cursor:pointer}
 @media (prefers-reduced-motion:no-preference){
   .note{animation:noterise .28s ease-out}

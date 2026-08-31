@@ -14,6 +14,7 @@ import { CFG, S, settings, SERVICE_DEFAULTS } from "./state.js";
 import * as store from "./store.js";
 import * as trips from "./trips.js";
 import * as hazards from "./hazards.js";
+import * as speedlimit from "./speedlimit.js";
 
 const MAX_NOTES = 40;
 const NOTE_LIFE = 6000;        // ms a banner holds the band before it hands it back
@@ -44,9 +45,11 @@ export function bike() {
     add("warn", "Warm-up",
         "Coolant " + Math.round(S.temp) + "°C — revs capped until " + CFG.warmC + "°C");
   }
-  if (S.gpsOk && S.speed > settings.speedLimit + 2) {
+  const lim = speedlimit.limit();
+  if (S.gpsOk && S.speed > lim + 2) {
+    const road = speedlimit.roadName();
     add("warn", "Over the limit",
-        Math.round(S.speed) + " in a " + settings.speedLimit + " zone");
+        Math.round(S.speed) + " in a " + lim + " zone" + (road ? " · " + road : ""));
   }
   // Flooding and closures, from the advisory feed. Severity follows the
   // report's own confidence: a model reading news is not an eyewitness, and

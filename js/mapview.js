@@ -56,6 +56,11 @@ export function routeInfo() {
 export function routeStatus() {
   return active && active.routeStatus ? active.routeStatus() : null;
 }
+/* Whether the map is drawing in 3D, and why not when it is not. */
+export function mapMode() {
+  return active && active.mapMode ? active.mapMode() : "";
+}
+
 /* Turn-by-turn steps only exist where a directions service returned them —
    null on the OpenStreetMap side, which routes but does not narrate. */
 export function nextStep() {

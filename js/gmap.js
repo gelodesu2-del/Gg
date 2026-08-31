@@ -18,72 +18,64 @@ let map = null;
 let rotor = null;
 let vector = false;
 let lastCenter = 0;
+let lastHeadingAt = 0;
 let lastHeading = 0;
 let destMarker = null;
 
-/* The map is styled from the live theme rather than a fixed palette, so
-   switching to crimson turns the roads crimson too. Everything is mixed from
-   the accent toward a near-black ground: roads climb in brightness with their
-   importance, labels sit above them, and points of interest are removed
-   entirely — a dash needs the road network, not restaurant pins.
-
-   Google's styling cannot do glow, so the cyber read comes from the ratios:
-   a very dark ground, a narrow band of accent-tinted roads, and labels bright
-   enough to catch but not to compete with the cluster. */
-function mix(rgb, k, base, fallback) {
-  const b = base || fallback || [4, 6, 9];
-  return "#" + rgb.map((c, i) => Math.round(b[i] + (c - b[i]) * k)
-    .toString(16).padStart(2, "0")).join("");
-}
-
+/* The map is greyscale by design and does not follow the theme. Points of
+   interest are removed entirely — a dash needs the road network, not
+   restaurant pins. This applies to raster tiles only: set a Map ID and Google
+   takes styling into the cloud console instead. */
 export function themeStyles() {
-  let rgb = [0, 245, 140];
-  try {
-    const v = getComputedStyle(document.getElementById("app")).getPropertyValue("--neon-rgb");
-    const p = v.split(",").map((n) => parseInt(n, 10));
-    if (p.length === 3 && p.every((n) => !isNaN(n))) rgb = p;
-  } catch (e) { /* fall back to the default accent */ }
-
   const light = document.getElementById("app").dataset.mode === "light";
-  // In light mode the ramp inverts by construction: the ground is paper and
-  // the accents are dark, so mixing toward the accent still darkens roads
-  // with importance. Water keeps a blue cast in both.
-  const BASE = light ? [242, 244, 246] : [4, 6, 9];
-  const WATER_BASE = light ? [198, 214, 226] : [3, 9, 15];
+
+  /* The map itself is neutral: black through grey, no accent anywhere in it.
+     Colour on this screen means "the app is telling you something" — the
+     route, the destination pin, a hazard, the shift bar. A map tinted with
+     the same hue competes with all of that, and at a glance the eye cannot
+     tell a lit road from a lit instrument. So the ramp below is pure value:
+     the ground is nearly black, and each step up to arterial and highway is a
+     step in brightness only. */
+  const g = (n) => {
+    const v = light ? 255 - n : n;
+    const h = Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, "0");
+    return "#" + h + h + h;
+  };
   const STROKE = light ? "#F2F4F6" : "#040609";
+  // Water is the one thing allowed off the grey axis, and barely: a cold cast
+  // is what stops a river reading as another block of buildings.
+  const WATER = light ? "#C9D6E0" : "#0A0F15";
+  const WATER_LABEL = light ? "#5A6A78" : "#42525E";
 
   return [
-    // Ground sits almost black. Everything above it is a deliberate step up,
-    // and roads have to clear the blocks they run between or the labels end
-    // up floating over nothing — which is exactly how the first pass read.
-    { elementType: "geometry", stylers: [{ color: mix(rgb, 0.02, BASE) }] },
+    { elementType: "geometry", stylers: [{ color: g(7) }] },
     { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
     { elementType: "labels.text.stroke", stylers: [{ color: STROKE }, { weight: 4 }] },
-    { elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.45, BASE) }] },
+    { elementType: "labels.text.fill", stylers: [{ color: g(105) }] },
 
     { featureType: "poi", stylers: [{ visibility: "off" }] },
     { featureType: "transit", stylers: [{ visibility: "off" }] },
-    { featureType: "administrative", elementType: "geometry", stylers: [{ color: mix(rgb, 0.14, BASE) }] },
+    { featureType: "administrative", elementType: "geometry", stylers: [{ color: g(36) }] },
     { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
     { featureType: "administrative.neighborhood", stylers: [{ visibility: "off" }] },
 
-    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: mix(rgb, 0.025, BASE) }] },
-    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: mix(rgb, 0.045, BASE) }] },
-    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: mix(rgb, 0.07, BASE) }] },
+    { featureType: "landscape.natural", elementType: "geometry", stylers: [{ color: g(10) }] },
+    { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: g(16) }] },
+    { featureType: "poi.park", elementType: "geometry", stylers: [{ color: g(22) }] },
 
-    // The jump from block to road is what makes the network readable at a
-    // glance, so it is a wide one. Casing separates touching roads.
-    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.24, BASE) }] },
-    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.11, BASE) }] },
-    { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.38, BASE) }] },
-    { featureType: "road.arterial", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.16, BASE) }] },
-    { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: mix(rgb, 0.58, BASE) }] },
-    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: mix(rgb, 0.24, BASE) }] },
-    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.72, BASE) }] },
-    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.88, BASE) }] },
+    // A wide jump from block to road is what makes the network readable at
+    // speed; casing keeps two touching roads from merging into one shape.
+    { featureType: "road", elementType: "geometry.fill", stylers: [{ color: g(52) }] },
+    { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: g(26) }] },
+    { featureType: "road.arterial", elementType: "geometry.fill", stylers: [{ color: g(78) }] },
+    { featureType: "road.arterial", elementType: "geometry.stroke", stylers: [{ color: g(36) }] },
+    { featureType: "road.highway", elementType: "geometry.fill", stylers: [{ color: g(116) }] },
+    { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: g(52) }] },
+    { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: g(140) }] },
+    { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: g(168) }] },
 
-    { featureType: "water", elementType: "geometry", stylers: [{ color: mix(rgb, 0.11, WATER_BASE) }] },
-    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: mix(rgb, 0.40, WATER_BASE) }] }
+    { featureType: "water", elementType: "geometry", stylers: [{ color: WATER }] },
+    { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: WATER_LABEL }] }
   ];
 }
 
@@ -166,7 +158,26 @@ function init() {
   });
   document.getElementById("map-none").classList.add("hide");
   document.getElementById("map-slot").classList.add("live");
-  if (vector) rotor.style.transform = "";     // the camera turns instead
+  if (vector) {
+    rotor.style.transform = "";               // the camera turns instead
+    // Asserted again after construction. The constructor takes tilt as a
+    // request, and a map that is still deciding whether it can render vector
+    // tiles can drop it; setTilt on a live map does not get dropped.
+    setTimeout(() => { try { map.setTilt(TILT); } catch (e) { /* raster after all */ } }, 400);
+  }
+}
+
+/* Why the map is flat, when it is. Vector rendering — and therefore tilt, and
+   therefore raised buildings — is only available with a Map ID, and a Map ID
+   moves styling into the Cloud console: an inline styles array is ignored the
+   moment one is set. Diagnostics says which of the two the rider is getting. */
+export function mapMode() {
+  if (!map) return "";
+  if (!vector) return "flat — no Map ID set, so the map is raster tiles";
+  let tilt = null;
+  try { tilt = map.getTilt(); } catch (e) { /* not ready */ }
+  return tilt ? "3D · " + Math.round(tilt) + "° · styled in Cloud console"
+              : "Map ID set but still flat — check vector rendering is on for it";
 }
 
 /* Follow mode: heading-up and centred on the bike. A touch on the map breaks
@@ -188,11 +199,19 @@ export function update(now) {
   if (!map || !follow) return;
 
   if (vector) {
-    if (Math.abs(S.heading - lastHeading) > 0.8) {
+    // setHeading eases the camera rather than jumping it, so calling it every
+    // frame queues animations behind each other and the map lags the bike.
+    // Twenty times a second is past what the eye resolves on a map anyway.
+    let d = Math.abs(S.heading - lastHeading);
+    if (d > 180) d = 360 - d;
+    if (d > 1 && now - lastHeadingAt > 50) {
       lastHeading = S.heading;
+      lastHeadingAt = now;
       map.setHeading(S.heading);              // labels stay upright
     }
   } else if (rotor) {
+    // A CSS transform is cheap enough to write every frame, and the compositor
+    // does not queue them the way the camera does.
     rotor.style.transform = "rotate(" + (-S.heading).toFixed(1) + "deg)";
   }
 

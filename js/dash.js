@@ -8,6 +8,7 @@ import * as nav from "./nav.js";
 import * as mapview from "./mapview.js";
 import * as alerts from "./alerts.js";
 import * as hazards from "./hazards.js";
+import * as speedlimit from "./speedlimit.js";
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -168,14 +169,17 @@ export function renderSlow(now) {
 
   // Speed limit: a roundel under the GPS chip, and the speed itself turns with
   // it, so it reads from whichever half of the screen the eye is already on.
-  const over = S.gpsOk && S.speed > settings.speedLimit + 2;
+  // The number is the road's own where OpenStreetMap knows it, and the rider's
+  // setting where it does not.
+  const lim = speedlimit.limit();
+  const over = S.gpsOk && S.speed > lim + 2;
   if (memo.slim !== over) {
     memo.slim = over;
     $("limit").classList.toggle("over", over);
     $("speed").classList.toggle("over", over);
   }
   if (memo.limshow !== true) { memo.limshow = true; $("limit").hidden = false; }
-  write($("limit-n"), "textContent", settings.speedLimit, "slimn");
+  write($("limit-n"), "textContent", lim, "slimn");
 
   // peak hold
   const L = S.maxL > 3 ? Math.min(S.maxL, LEAN.max) : null;
@@ -235,28 +239,12 @@ export function renderSlow(now) {
   live("rpm", S.rpm !== null);
   setNum($("rpm"), S.rpm === null ? "—" : Math.round(S.rpm / 10) * 10);
 
-  live("range", S.fuel !== null);
-  if (S.fuel === null) {
-    write($("range"), "textContent", "—", "rng");
-    attr($("range-ring"), "r", "0", "rr");
-  } else {
-    const range = S.fuel * CFG.kmPerL;
-    write($("range"), "textContent", Math.round(range) + " km", "rng");
-    attr($("range-ring"), "r", clamp(18 + range / 210 * 74, 14, 96).toFixed(1), "rr");
-  }
-
-  live("clt", S.temp !== null);
-  if (S.temp === null) {
-    write($("clt"), "textContent", "—", "clt");
-  } else {
-    write($("clt"), "textContent", Math.round(S.temp) + "°C", "clt");
-    const hot = S.temp > 108, warmish = S.temp > 100;
-    const col = hot ? TH.red : warmish ? TH.gold : "";
-    if (memo.cltc !== col) { memo.cltc = col; $("clt").style.color = col; }
-  }
-
-  live("volts", S.volts !== null);
-  write($("volts"), "textContent", S.volts === null ? "—" : S.volts.toFixed(1) + " V", "volt");
+  // The fuel ring stays: it is drawn on the map rather than written over it,
+  // and it costs no space. Coolant, range and voltage came off the map — they
+  // are slow figures, and the alerts list is where a slow figure that has gone
+  // wrong actually needs to appear.
+  attr($("range-ring"), "r",
+    S.fuel === null ? "0" : clamp(18 + (S.fuel * CFG.kmPerL) / 210 * 74, 14, 96).toFixed(1), "rr");
 
   renderTurn(now);
   renderBand();
@@ -346,20 +334,20 @@ function renderBand() {
     return;
   }
 
+  // With nothing to say the band leaves the map alone rather than sitting
+  // there holding three dashes.
   const ri = mapview.routeInfo();
-  const hasRoute = !!ri;
-  if (memo.bandEta !== hasRoute) {
-    memo.bandEta = hasRoute;
-    $("ts-eta").hidden = !hasRoute;
-    $("ts-left").hidden = !hasRoute;
-  }
-  if (hasRoute) {
+  const home = nav.homing();
+  const show = !!(ri && home);
+  if (memo.bandEta !== show) { memo.bandEta = show; $("slot-trip").hidden = !show; }
+  if (show) {
     // Date.now, not the frame timestamp: an arrival time built from
     // milliseconds-since-page-load lands in 1970.
     const at = new Date(Date.now() + ri.s * 1000);
     write($("eta"), "textContent",
       String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0"), "eta");
     write($("dleft"), "textContent", nav.fmtDistance(ri.m), "dleft");
+    write($("dest"), "textContent", home.label, "dest");
   }
 }
 

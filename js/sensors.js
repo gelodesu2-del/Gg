@@ -125,6 +125,11 @@ function motion(e) {
    north fixes — whatever alpha reads at that moment becomes the reference,
    bracket angle and all. Corrected for screen rotation so a flipped landscape
    mount stays consistent. */
+/* True once the shell's compass is driving this, so the DOM events can be
+   left alone rather than fighting it at a tenth of the rate. */
+let nativeHeading = false;
+export const nativeCompass = () => nativeHeading;
+
 function orient(e) {
   let a = e.alpha;
   if (typeof a !== "number" || Number.isNaN(a)) return;
@@ -144,7 +149,9 @@ function orient(e) {
   if (S.speed >= 8 && !staleFix) return;            // GPS course owns it while moving
   const target = (cal.northAlpha - a + 360) % 360;
   const d = ((target - S.heading + 540) % 360) - 180;
-  S.heading = (S.heading + d * 0.12 + 360) % 360;   // shortest arc, smoothed
+  // Shortest arc, smoothed. The native source arrives about ten times as
+  // often, so it can afford a much shorter time constant without jitter.
+  S.heading = (S.heading + d * (nativeHeading ? 0.35 : 0.12) + 360) % 360;
 }
 
 /* One guided pass: bike upright on level ground, front wheel facing north,
@@ -180,6 +187,11 @@ function finishCal() {
     gravity: g ? g.map((v) => +v.toFixed(3)) : null,
     pitch,
     northAlpha: northAlpha === null ? null : +northAlpha.toFixed(1),
+    // Which compass produced the reference. The two sources can sit a constant
+    // offset apart, so a calibration taken on one is not valid on the other —
+    // recording it is what lets diagnostics say so instead of the rider
+    // discovering it as a map that points somewhere plausible but wrong.
+    src: nativeHeading ? "native" : "web",
     when: Date.now()
   });
 }
@@ -202,14 +214,24 @@ export async function startMotion() {
   motionOn = true;
   if (!orientOn) {
     orientOn = true;
-    const DOE = window.DeviceOrientationEvent;
-    if (DOE && typeof DOE.requestPermission === "function") {
-      try { await DOE.requestPermission(); } catch (e) { /* compass optional */ }
+    // The shell's rotation-vector sensor is the same quantity from the source
+    // at roughly ten times the rate, and without a bridge crossing per DOM
+    // event. It emits in the alpha convention, so it feeds the same function
+    // and calibration works unchanged.
+    if (window.NMAXShell && typeof window.NMAXShell.headingStart === "function") {
+      window.__nmaxHeading = (deg) => orient({ alpha: +deg });
+      try { window.NMAXShell.headingStart(); nativeHeading = true; } catch (e) { nativeHeading = false; }
     }
-    // Android fires the absolute variant; the plain one is a fallback that at
-    // least keeps relative turns coherent between GPS fixes.
-    window.addEventListener("deviceorientationabsolute", orient, { passive: true });
-    window.addEventListener("deviceorientation", (e) => { if (e.absolute !== false) orient(e); }, { passive: true });
+    if (!nativeHeading) {
+      const DOE = window.DeviceOrientationEvent;
+      if (DOE && typeof DOE.requestPermission === "function") {
+        try { await DOE.requestPermission(); } catch (e) { /* compass optional */ }
+      }
+      // Android fires the absolute variant; the plain one is a fallback that at
+      // least keeps relative turns coherent between GPS fixes.
+      window.addEventListener("deviceorientationabsolute", orient, { passive: true });
+      window.addEventListener("deviceorientation", (e) => { if (e.absolute !== false) orient(e); }, { passive: true });
+    }
   }
   return true;
 }

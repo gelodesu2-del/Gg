@@ -7,6 +7,7 @@ import * as shell from "./shell.js";
 import * as sensors from "./sensors.js";
 import * as trips from "./trips.js";
 import * as hazards from "./hazards.js";
+import * as speedlimit from "./speedlimit.js";
 import * as spotify from "./spotify.js";
 import * as mapview from "./mapview.js";
 import * as sos from "./sos.js";
@@ -103,6 +104,7 @@ function frame(now) {
     dash.renderSlow(now);
     trips.tick(now, sdt);
     hazards.tick();               // decides for itself whether anything is due
+    speedlimit.tick();            // one Overpass tile at a time, at most
     crashWatch(now);
     if (spotify.connected() && now - lastPoll > 5000) {
       lastPoll = now;

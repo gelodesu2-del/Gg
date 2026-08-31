@@ -5,6 +5,10 @@ import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.net.Uri;
 import android.provider.Settings;
 import android.os.Build;
@@ -99,6 +103,16 @@ public class MainActivity extends Activity {
         /* Notification access cannot be requested with requestPermissions —
            it is granted in a system settings screen, so the page asks whether
            it holds it and sends the rider there when it does not. */
+        /* The WebView's deviceorientation events arrive slowly and cost a
+           bridge crossing each; the rotation-vector sensor is the same
+           quantity from the source, at a rate that actually tracks a bike
+           turning. The page asks for it when it wants it. */
+        @JavascriptInterface public void headingStart() {
+            main.post(new Runnable() { public void run() { startHeading(); } });
+        }
+        @JavascriptInterface public void headingStop() {
+            main.post(new Runnable() { public void run() { stopHeading(); } });
+        }
         @JavascriptInterface public boolean noteEnabled() { return listenerGranted(); }
         @JavascriptInterface public void noteSettings() {
             main.post(new Runnable() { public void run() { openListenerSettings(); } });
@@ -132,6 +146,77 @@ public class MainActivity extends Activity {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             } catch (Exception e2) { /* nothing to open */ }
         }
+    }
+
+    /* ------------------------------------------------------------
+       Compass.
+
+       Emitted in the same convention as DeviceOrientationEvent.alpha — zero
+       when the top of the device faces north, rising anticlockwise — so the
+       page's existing calibration and smoothing apply unchanged and only the
+       rate improves. Display rotation is deliberately left alone: the page
+       already adds screen.orientation.angle, and doing it here as well would
+       count it twice.
+       ------------------------------------------------------------ */
+    private SensorManager sensors;
+    private Sensor rotationVector;
+    private boolean headingOn = false;
+    /* Remembered across a pause: the page asks once, and the sensor has to
+       come back by itself when the dash does. */
+    private boolean headingWanted = false;
+    private long lastHeadingAt = 0;
+    private float lastHeadingVal = -999f;
+    private final float[] rotMatrix = new float[9];
+    private final float[] orientation = new float[3];
+
+    private final SensorEventListener headingListener = new SensorEventListener() {
+        public void onAccuracyChanged(Sensor s, int a) { }
+        public void onSensorChanged(SensorEvent e) {
+            if (e.values == null || e.values.length < 3) return;
+            SensorManager.getRotationMatrixFromVector(rotMatrix, e.values);
+            SensorManager.getOrientation(rotMatrix, orientation);
+            // azimuth is clockwise from north; alpha runs the other way.
+            float deg = (float) Math.toDegrees(orientation[0]);
+            float alpha = (360f - deg) % 360f;
+            if (alpha < 0) alpha += 360f;
+
+            // 25 Hz is past what the eye resolves on a map, and every push
+            // costs a bridge crossing. Below a third of a degree is noise.
+            long now = System.currentTimeMillis();
+            float d = Math.abs(alpha - lastHeadingVal);
+            if (d > 180f) d = 360f - d;
+            if (now - lastHeadingAt < 40 || (d < 0.3f && lastHeadingVal > -900f)) return;
+            lastHeadingAt = now;
+            lastHeadingVal = alpha;
+            js("heading", String.valueOf(Math.round(alpha * 10f) / 10f));
+        }
+    };
+
+    private void startHeading() {
+        headingWanted = true;
+        if (headingOn) return;
+        if (sensors == null) sensors = (SensorManager) getSystemService(SENSOR_SERVICE);
+        if (sensors == null) return;
+        if (rotationVector == null) {
+            rotationVector = sensors.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+            // Some phones only offer the uncalibrated geomagnetic flavour.
+            if (rotationVector == null) {
+                rotationVector = sensors.getDefaultSensor(Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR);
+            }
+        }
+        if (rotationVector == null) return;
+        sensors.registerListener(headingListener, rotationVector, SensorManager.SENSOR_DELAY_GAME);
+        headingOn = true;
+    }
+
+    /** Pausing keeps the request; the page asking to stop drops it. */
+    private void stopHeading() { headingWanted = false; pauseHeading(); }
+
+    private void pauseHeading() {
+        if (!headingOn || sensors == null) return;
+        sensors.unregisterListener(headingListener);
+        headingOn = false;
+        lastHeadingVal = -999f;
     }
 
     /* The listener runs whether or not the dash is in front of the rider, so
@@ -324,11 +409,22 @@ public class MainActivity extends Activity {
     private final ExecutorService io = Executors.newSingleThreadExecutor();
 
     private void js(final String type, final String data) {
+        if ("heading".equals(type)) { jsHeading(data); return; }
         main.post(new Runnable() {
             public void run() {
                 if (web != null) {
                     web.evaluateJavascript("window.__nmaxBt&&window.__nmaxBt("
                         + JSONObject.quote(type) + "," + JSONObject.quote(data) + ")", null);
+                }
+            }
+        });
+    }
+
+    private void jsHeading(final String deg) {
+        main.post(new Runnable() {
+            public void run() {
+                if (web != null) {
+                    web.evaluateJavascript("window.__nmaxHeading&&window.__nmaxHeading(" + deg + ")", null);
                 }
             }
         });
@@ -568,6 +664,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         super.onPause();
+        pauseHeading();                 // the request survives; the listener does not
         NoteService.setSink(null);
         if (web != null) web.onPause();
     }
@@ -575,12 +672,14 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (headingWanted) startHeading();   // pauseHeading already cleared headingOn
         NoteService.setSink(noteSink);
         if (web != null) { web.onResume(); immersive(); }
     }
 
     @Override
     protected void onDestroy() {
+        stopHeading();
         NoteService.setSink(null);
         super.onDestroy();
     }
