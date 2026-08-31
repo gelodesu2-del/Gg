@@ -192,6 +192,28 @@ not for distribution and is not on any store.
 > fresh key, whose APK will only install after uninstalling the old app, taking
 > every trip, setting and calibration with it.
 
+### Phone notifications on the dash
+
+WebView has no way to read the notification shade — no browser does — so this
+is a native `NotificationListenerService` in the shell, handing each
+notification to the page through `window.__nmaxNote`. It is off until the rider
+grants **notification access** in Android's own settings screen; an app cannot
+award that to itself, so Settings → **Phone notifications** just opens the
+screen and re-reads the answer on the way back.
+
+Nothing leaves the phone and nothing is written to storage. A notification is
+somebody's private message; keeping it in `localStorage` would outlive any
+reason to have it, so the list is memory-only and dies with the session.
+
+Three filters stand in for an app picker. The ongoing flag drops media players,
+navigation and foreground services; the group-summary flag drops the "3 new
+messages" duplicate Android posts beside the real ones; and channel importance
+drops promotional banners, which ship on low-importance channels while messages
+and calls do not. What survives is roughly what would have been worth stopping
+for. Android also reposts a notification on every edit, so a repeat of the same
+title from the same app within four seconds updates the existing entry instead
+of flashing the band again.
+
 ### Talking to the dongle
 
 `NMAXShell.bt*` moves bytes; the whole ELM327 dialect lives in `js/obd.js`, so
@@ -319,6 +341,8 @@ with no devtools attached.
   Settings → **Numerals** → *Safe* switches to a face that is already working.
   *Auto* measures at boot and picks on its own.
 - **The dash stutters** — Settings → **Screen effects** off.
+- **No notifications on the map** — Settings → **Phone notifications** must
+  read *On*. If it reads *App only* you are in a browser tab, not the app.
 - **The dongle never appears in the scan** — it is a classic-Bluetooth unit,
   not BLE. Pair it in Android's Bluetooth settings (PIN usually `1234`), then
   scan again: paired dongles are listed straight away, tagged `paired`.

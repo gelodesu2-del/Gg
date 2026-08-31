@@ -56,6 +56,11 @@ export function routeInfo() {
 export function routeStatus() {
   return active && active.routeStatus ? active.routeStatus() : null;
 }
+/* Turn-by-turn steps only exist where a directions service returned them —
+   null on the OpenStreetMap side, which routes but does not narrate. */
+export function nextStep() {
+  return active && active.nextStep ? active.nextStep() : null;
+}
 
 export function setFollow(on) { if (active && active.setFollow) active.setFollow(on); }
 export function following() { return active && active.following ? active.following() : true; }

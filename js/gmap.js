@@ -154,7 +154,9 @@ function init() {
   };
   // A Map ID and an inline styles array are mutually exclusive: passing both
   // makes Google ignore the styles and warn about it.
-  if (vector) { opts.mapId = settings.mapId; opts.heading = 0; opts.tilt = 0; }
+  // Tilt is what a vector map buys over raster tiles: buildings stand up and
+  // the road ahead gets more pixels than the road behind. Raster ignores it.
+  if (vector) { opts.mapId = settings.mapId; opts.heading = 0; opts.tilt = TILT; }
   else { opts.styles = themeStyles(); }
 
   map = new google.maps.Map(document.getElementById("gmap"), opts);
@@ -220,8 +222,13 @@ export function update(now) {
 let dirSvc = null;
 let routeLine = null;
 let routeGlow = null;
+/* Camera pitch on a vector map. 45 is Google's ceiling for a raised-building
+   view; anything less and the extrusions barely read at a glance. */
+const TILT = 45;
+
 let routePath = null;
 let routeMeta = null;
+let routeSteps = [];
 let routeDest = null;
 let routeCheckAt = 0;
 let dirError = null;
@@ -237,16 +244,23 @@ function clearRoute() {
   if (routeGlow) { routeGlow.setMap(null); routeGlow = null; }
   routePath = null;
   routeMeta = null;
+  routeSteps = [];
 }
 
 function requestRoute() {
   if (!map || !routeDest || S.lat === null) return;
   if (!google.maps.DirectionsService) { dirError = "DirectionsService missing"; return; }
   dirSvc = dirSvc || new google.maps.DirectionsService();
+  // TWO_WHEELER routes a scooter rather than a car — Google supports it in the
+  // Philippines, and it uses roads a car cannot. departureTime is what actually
+  // switches on live traffic: without it the ETA is free-flow and the route is
+  // not traffic-optimised at all.
   dirSvc.route({
     origin: { lat: S.lat, lng: S.lng },
     destination: { lat: routeDest.lat, lng: routeDest.lng },
-    travelMode: google.maps.TravelMode.DRIVING
+    travelMode: google.maps.TravelMode.TWO_WHEELER,
+    drivingOptions: { departureTime: new Date(), trafficModel: "bestguess" },
+    provideRouteAlternatives: true
   }, (res, status) => {
     if (status !== "OK" || !res.routes || !res.routes.length) {
       dirError = String(status);          // REQUEST_DENIED = not on the key's allowed list
@@ -265,9 +279,51 @@ function requestRoute() {
     const leg = route.legs && route.legs[0];
     routeMeta = leg ? {
       m: leg.distance ? leg.distance.value : 0,
-      s: leg.duration ? leg.duration.value : 0
+      // duration_in_traffic is only present once departureTime was sent.
+      s: leg.duration_in_traffic ? leg.duration_in_traffic.value
+        : leg.duration ? leg.duration.value : 0
     } : null;
+    routeSteps = (leg && leg.steps ? leg.steps : []).map((st) => ({
+      lat: st.start_location.lat(),
+      lng: st.start_location.lng(),
+      endLat: st.end_location.lat(),
+      endLng: st.end_location.lng(),
+      m: st.distance ? st.distance.value : 0,
+      maneuver: st.maneuver || "",
+      road: plain(st.instructions)
+    }));
   });
+}
+
+/* Google returns the instruction as HTML. The dash writes it with textContent,
+   so the tags have to come out here rather than be trusted downstream. */
+function plain(html) {
+  if (!html) return "";
+  const t = document.createElement("div");
+  t.innerHTML = html;
+  return (t.textContent || "").replace(/\s+/g, " ").trim().slice(0, 60);
+}
+
+/* The step the rider is currently on: the last one whose start is already
+   behind them. Distance is to the end of that step — the point they act at. */
+export function nextStep() {
+  if (!routeSteps.length || S.lat === null) return null;
+  const cosLat = Math.cos(S.lat * Math.PI / 180);
+  const dist = (aLat, aLng) => {
+    const dx = (aLng - S.lng) * 111320 * cosLat, dy = (aLat - S.lat) * 110540;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+  let best = 0, bestD = Infinity;
+  for (let i = 0; i < routeSteps.length; i++) {
+    const d = dist(routeSteps[i].lat, routeSteps[i].lng);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  const st = routeSteps[best];
+  return {
+    m: Math.round(dist(st.endLat, st.endLng)),
+    maneuver: st.maneuver,
+    road: st.road
+  };
 }
 
 /* Cheap planar distance in metres to the nearest route vertex — good enough

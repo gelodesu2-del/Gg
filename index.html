@@ -31,7 +31,6 @@
             <div class="speedwrap">
               <div class="speed-row">
                 <div class="speed num" id="speed">0</div>
-                <div class="slim" id="slim"><span class="slim-x">!</span><span class="slim-n" id="slim-n">60</span></div>
               </div>
               <div class="speed-lbl">km/h · gps</div>
             </div>
@@ -83,14 +82,16 @@
               </div>
             </div>
 
-            <div class="fuel obd">
-              <span class="tag-off">NO OBD</span>
-              <div class="fuel-head">
-                <span class="k">Fuel</span>
-                <span class="v"><span class="num r3" id="fuel-v">—</span><small>L</small></span>
-              </div>
-              <div class="pips" id="pips"></div>
-            </div>
+            <button class="alerts" id="alerts-btn" type="button" aria-haspopup="dialog">
+              <span class="al-i" id="al-i" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7v4l-2 3v1h18v-1l-2-3V9a7 7 0 00-7-7zm0 20a3 3 0 003-3H9a3 3 0 003 3z"/></svg>
+              </span>
+              <span class="al-b">
+                <span class="k">Bike</span>
+                <span class="al-t" id="al-t">All clear</span>
+              </span>
+              <span class="al-n" id="al-n" hidden>0</span>
+            </button>
           </div>
 
           <div class="mapwrap" id="map-slot">
@@ -105,22 +106,50 @@
             <span class="map-attr" id="map-attr" hidden>© OpenStreetMap contributors · © CARTO</span>
             <span class="chip warm" id="warm">Warm-up</span>
             <span class="chip hole" id="holewarn">Rough road ahead</span>
-            <button class="map-btn-recenter" id="recenter-btn" type="button" aria-label="Recenter map" hidden>
-              <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9 3h-2.06A7 7 0 0013 5.06V3h-2v2.06A7 7 0 005.06 11H3v2h2.06A7 7 0 0011 18.94V21h2v-2.06A7 7 0 0018.94 13H21z"/></svg>
-            </button>
-            <button class="map-btn-search" id="search-btn" type="button" aria-label="Search destination">
-              <svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.3 14l5.4 5.4 1.4-1.4-5.4-5.4A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
-            </button>
-            <span class="chip to" id="to-chip" hidden>
-              <svg class="to-arrow" id="to-arrow" viewBox="0 0 24 24"><path d="M12 2l7 19-7-5-7 5z"/></svg>
-              <b id="to-dist">—</b><i id="to-name">—</i>
-            </span>
+            <div class="map-btns">
+              <button class="map-btn" id="search-btn" type="button" aria-label="Search destination">
+                <svg viewBox="0 0 24 24"><path d="M10 2a8 8 0 105.3 14l5.4 5.4 1.4-1.4-5.4-5.4A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
+              </button>
+              <button class="map-btn re" id="recenter-btn" type="button" aria-label="Recenter map" hidden>
+                <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 100 8 4 4 0 000-8zm9 3h-2.06A7 7 0 0013 5.06V3h-2v2.06A7 7 0 005.06 11H3v2h2.06A7 7 0 0011 18.94V21h2v-2.06A7 7 0 0018.94 13H21z"/></svg>
+              </button>
+            </div>
             <span class="chip tl">GPS <b id="lock">…</b></span>
-            <span class="chip bl obd" id="clt-chip">CLT <b id="clt">—</b></span>
-            <span class="chip br obd">RANGE <b id="range">—</b></span>
+
+            <!-- What to do next, then how fast you may do it. -->
+            <div class="tl-stack">
+              <div class="turn" id="turn" hidden>
+                <svg class="turn-i" id="turn-i" viewBox="0 0 24 24" aria-hidden="true"><path id="turn-p" d=""/></svg>
+                <span class="turn-b">
+                  <span class="turn-d num" id="turn-d">—</span>
+                  <span class="turn-s" id="turn-s">—</span>
+                </span>
+              </div>
+              <div class="limit" id="limit" hidden><span class="num" id="limit-n">60</span></div>
+            </div>
+
+            <!-- One slot along the bottom. The trip figures live here until a
+                 phone notification borrows it for a few seconds. -->
+            <div class="band">
+              <div class="slot figs" id="slot-trip">
+                <span class="ts" id="ts-eta" hidden><span class="k">Arrive</span><span class="v num" id="eta">—</span></span>
+                <span class="ts" id="ts-left" hidden><span class="k">Left</span><span class="v num" id="dleft">—</span></span>
+                <span class="ts obd" id="ts-clt"><span class="k">Coolant</span><span class="v num" id="clt">—</span></span>
+                <span class="ts obd" id="ts-rng"><span class="k">Range</span><span class="v num" id="range">—</span></span>
+                <span class="ts obd" id="ts-volt"><span class="k">Battery</span><span class="v num" id="volts">—</span></span>
+              </div>
+              <button class="slot note" id="slot-note" type="button" hidden>
+                <span class="n-app" id="n-app">•</span>
+                <span class="n-b">
+                  <span class="n-k" id="n-k">—</span>
+                  <span class="n-t" id="n-t">—</span>
+                  <span class="n-m" id="n-m">—</span>
+                </span>
+                <span class="n-age" id="n-age">now</span>
+              </button>
+            </div>
           </div>
 
-          <div class="shift-v" id="shift-v" aria-hidden="true"></div>
         </div>
 
         <!-- layers -->
@@ -161,6 +190,7 @@
             <div class="srow"><span class="t">Keep screen awake<i>Wake lock while riding</i></span><button class="sw on" id="wake-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Crash detection<i>Prompts to text your contact</i></span><button class="sw on" id="crash-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Speed limit<i>Soft warning above this</i></span><input class="fld sm" id="lim-in" type="number" min="20" max="140" step="5" aria-label="Speed limit"></div>
+            <div class="srow"><span class="t">Phone notifications<i id="note-sub">Show messages and calls on the map</i></span><button class="pill" id="note-btn" type="button">Off</button></div>
             <div class="srow"><span class="t">Colors<i>Dark and light sets</i></span><button class="pill" id="colors-btn" type="button">Open</button></div>
             <div class="srow"><span class="t">Map<i>OpenStreetMap needs no account</i></span><button class="pill" id="map-btn" type="button">OpenStreetMap</button></div>
             <div class="srow"><span class="t">Numerals<i>Switch if the digits show as empty boxes</i></span><button class="pill" id="font-btn" type="button">Auto</button></div>
@@ -256,6 +286,27 @@
           <div class="cs-sec">Light set</div>
           <div class="cs-grid" id="cs-light"></div>
           <button class="crash-btn" id="cs-close" type="button">Done</button>
+        </div>
+
+        <!-- Both alert sources, side by side: what the bike is saying and what
+             the phone is saying, kept apart because they are answered
+             differently. -->
+        <div class="layer layer-alerts" id="layer-alerts">
+          <div class="ltitle">ALERTS</div>
+          <div class="al-cols">
+            <div class="al-col">
+              <div class="al-head"><span class="al-h bike">Bike</span><span class="al-c" id="al-cb">—</span></div>
+              <div class="al-list" id="al-bike"></div>
+            </div>
+            <div class="al-col">
+              <div class="al-head"><span class="al-h phone">Phone</span><span class="al-c" id="al-cp">—</span></div>
+              <div class="al-list" id="al-phone"></div>
+            </div>
+          </div>
+          <div class="s-foot">
+            <button class="crash-btn" id="al-close" type="button">Close</button>
+            <button class="crash-btn" id="al-clear" type="button">Clear phone list</button>
+          </div>
         </div>
 
         <div class="layer layer-crash" id="layer-crash" data-phase="count">

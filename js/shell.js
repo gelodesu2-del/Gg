@@ -9,6 +9,7 @@ import * as mapview from "./mapview.js";
 import * as sos from "./sos.js";
 import * as nav from "./nav.js";
 import * as obd from "./obd.js";
+import * as alerts from "./alerts.js";
 
 const $ = (id) => document.getElementById(id);
 /* name, two preview chips, mode. The mode is what flips the ground tokens —
@@ -219,6 +220,73 @@ export function init() {
       toast("No Bluetooth available here");
     }
   });
+  /* ---- phone notifications ---- */
+  /* The grant lives in Android's own settings screen — an app cannot award
+     itself notification access — so this row sends the rider there and then
+     re-reads the answer when they come back. */
+  function noteRow() {
+    const shell = alerts.hasShell();
+    const on = shell && alerts.listenerOn();
+    $("note-btn").textContent = !shell ? "App only" : on ? "On" : "Off";
+    $("note-btn").disabled = !shell;
+    $("note-sub").textContent = !shell
+      ? "Needs the installed app, not a browser tab"
+      : on ? "Messages and calls appear on the map"
+           : "Opens Android's notification access screen";
+  }
+  $("note-btn").addEventListener("click", () => { alerts.openListenerSettings(); });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) noteRow(); });
+  noteRow();
+
+  /* ---- alerts ---- */
+  $("alerts-btn").addEventListener("click", () => { renderAlerts(); layer("alerts"); alerts.markRead(); });
+  $("al-close").addEventListener("click", () => layer(""));
+  $("al-clear").addEventListener("click", () => { alerts.clearPhone(); renderAlerts(); });
+  $("slot-note").addEventListener("click", () => { renderAlerts(); layer("alerts"); alerts.markRead(); });
+  alerts.setOnChange(() => { if (openLayers() === "alerts") renderAlerts(); });
+
+  function row(sev, title, sub, age) {
+    const el = document.createElement("div");
+    el.className = "al-item " + sev;
+    el.innerHTML = '<span class="al-ib"><span class="al-it"></span><span class="al-is"></span></span>' +
+                   '<span class="al-ia"></span>';
+    // Notification text comes from other people's apps: it is set as text,
+    // never parsed as markup.
+    el.querySelector(".al-it").textContent = title;
+    el.querySelector(".al-is").textContent = sub;
+    el.querySelector(".al-ia").textContent = age;
+    return el;
+  }
+
+  function fill(host, items, empty) {
+    host.innerHTML = "";
+    if (!items.length) {
+      const e = document.createElement("div");
+      e.className = "al-empty";
+      e.textContent = empty;
+      host.appendChild(e);
+      return;
+    }
+    for (const it of items) host.appendChild(it);
+  }
+
+  function renderAlerts() {
+    const b = alerts.bike();
+    fill($("al-bike"), b.map((a) => row(a.sev, a.t, a.s, "")),
+         "Nothing to report. Warm-up, service and road warnings appear here as they happen.");
+    $("al-cb").textContent = b.length ? b.length + " active" : "clear";
+
+    const ph = alerts.phone();
+    fill($("al-phone"), ph.map((n) => row(n.read ? "info" : "crit",
+      (n.app ? n.app + " · " : "") + (n.title || ""), n.body, alerts.fmtAge(n.at))),
+      alerts.hasShell()
+        ? (alerts.listenerOn()
+            ? "Nothing yet. Messages and calls land here as they arrive."
+            : "Notification access is off. Settings \u2192 Phone notifications turns it on.")
+        : "Phone notifications need the app, not a browser tab.");
+    $("al-cp").textContent = ph.length ? ph.length + " today" : "none";
+  }
+
   $("obd-close").addEventListener("click", () => { obd.stopScan(); layer("settings"); });
   $("obd-forget").addEventListener("click", () => { obd.disconnect(); toast("Forgotten"); layer("settings"); });
 

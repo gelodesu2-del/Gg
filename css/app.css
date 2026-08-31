@@ -78,7 +78,9 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 /* ---------- stable numerals ---------- */
 #app[data-font="fallback"] .speed,
 #app[data-font="fallback"] .cell .v,
-#app[data-font="fallback"] .fuel-head .v,
+#app[data-font="fallback"] .ts .v,
+#app[data-font="fallback"] .turn-d,
+#app[data-font="fallback"] .limit .num,
 #app[data-font="fallback"] .logs-title,
 #app[data-font="fallback"] .wkc .v,
 #app[data-font="fallback"] .trip .dist,
@@ -137,14 +139,13 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 #app[data-fx="off"] .speed{text-shadow:none}
 #app[data-fx="off"] .cell .v{text-shadow:none}
 
+/* One row along the top border and nowhere else. It had a second leg down the
+   right edge; that stole width from the map for a reading the top row already
+   gave, so the segments went back into a single line. */
 .shift{display:flex; gap:.3em; padding:1.15em 1.5em .75em; align-items:stretch}
-/* The top row's continuation: revs build left to right, then pour down the
-   right edge into the red. Same segments, turned on their side. */
-.shift-v{display:flex; flex-direction:column; gap:.3em; padding:.35em .55em 1em .15em; min-height:0}
-.shift-v .seg{width:auto; flex:1}
 .seg{flex:1; background:var(--off); box-shadow:inset 0 0 0 1px rgba(var(--neon-rgb),.06)}
 
-.main{display:grid; grid-template-columns:42em 1fr 2.1em; border-top:1px solid var(--edge); min-height:0}
+.main{display:grid; grid-template-columns:42em 1fr; border-top:1px solid var(--edge); min-height:0}
 .left{position:relative; padding:1.4em 1.9em 1.5em; display:grid; grid-template-rows:1fr auto auto auto; gap:.78em; min-height:0; border-right:1px solid var(--edge)}
 .speedwrap{display:flex; flex-direction:column; justify-content:center; min-height:0; overflow:hidden}
 .speed-row{display:flex; align-items:center; justify-content:space-between; gap:.6em; min-width:0}
@@ -154,17 +155,13 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
   text-shadow:-.016em 0 rgba(var(--gold-rgb),.6), .016em 0 rgba(var(--neon-rgb),.6);
 }
 .speed-lbl{font-size:1.2em; letter-spacing:.3em; color:var(--ink-3); margin-top:.35em; text-transform:uppercase}
-.slim{flex:none; display:flex; flex-direction:column; align-items:center; line-height:1; opacity:0; transition:opacity .3s; pointer-events:none; padding-right:.2em}
-.slim.on{opacity:1}
-.slim-x{font-family:var(--f-num); font-weight:800; font-size:4.6em; color:var(--red); text-shadow:0 0 .35em rgba(var(--red-rgb),.6)}
-.slim-n{font-size:1.25em; letter-spacing:.14em; color:var(--red); margin-top:.3em; opacity:.85}
 
 /* corner-bracketed panel, used by every module */
-.cell,.fuel,.media{position:relative; background:var(--panel); border:1px solid var(--edge)}
-.cell::before,.cell::after,.fuel::before,.fuel::after,.media::before,.media::after{
+.cell,.alerts,.media{position:relative; background:var(--panel); border:1px solid var(--edge)}
+.cell::before,.cell::after,.alerts::before,.alerts::after,.media::before,.media::after{
   content:""; position:absolute; width:.85em; height:.85em; border:1px solid var(--neon); opacity:.75}
-.cell::before,.fuel::before,.media::before{top:-1px; left:-1px; border-right:0; border-bottom:0}
-.cell::after,.fuel::after,.media::after{bottom:-1px; right:-1px; border-left:0; border-top:0}
+.cell::before,.alerts::before,.media::before{top:-1px; left:-1px; border-right:0; border-bottom:0}
+.cell::after,.alerts::after,.media::after{bottom:-1px; right:-1px; border-left:0; border-top:0}
 
 .media{padding:.5em .75em; display:flex; align-items:center; gap:.75em}
 .m-l{flex:1; min-width:0; display:flex; flex-direction:column; gap:.2em}
@@ -189,7 +186,7 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 
 .stats{display:grid; grid-template-columns:1fr 1.55fr; gap:.85em}
 .cell{padding:.7em .9em .65em}
-.cell .k,.fuel .k{font-size:1.15em; letter-spacing:.2em; color:var(--ink-3); text-transform:uppercase; display:block}
+.cell .k,.alerts .k{font-size:1.15em; letter-spacing:.2em; color:var(--ink-3); text-transform:uppercase; display:block}
 .cell .v{font-family:var(--f-num); font-weight:700; font-size:3.1em; line-height:1.1; display:block; margin-top:.15em;
   text-shadow:0 0 .4em rgba(var(--neon-rgb),.3)}
 .cell.lean{display:flex; flex-direction:column}
@@ -204,12 +201,26 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 #lean-mark line:first-child{stroke:rgba(var(--neon-rgb),.30)}
 .pk{fill:var(--mint)}
 
-.fuel{padding:.55em 1em .6em}
-.fuel-head{display:flex; justify-content:space-between; align-items:baseline}
-.fuel-head .v{font-family:var(--f-num); font-weight:700; font-size:2.1em}
-.fuel-head .v small,.cell .v small{font-family:var(--f-mono); font-size:.46em; color:var(--ink-3); margin-left:.25em}
-.pips{display:flex; gap:.22em; margin-top:.45em}
-.pip{flex:1; height:.56em; background:var(--off); box-shadow:inset 0 0 0 1px rgba(var(--neon-rgb),.07)}
+.cell .v small{font-family:var(--f-mono); font-size:.46em; color:var(--ink-3); margin-left:.25em}
+
+/* The alerts block, where fuel used to be. It carries the single most urgent
+   thing the bike is saying; the panel behind it carries the rest. */
+.alerts{display:flex; align-items:center; gap:.85em; width:100%; text-align:left;
+  padding:.6em .9em; font:inherit; color:inherit; cursor:pointer; overflow:hidden}
+.al-i{width:2.5em; height:2.5em; flex:none; display:grid; place-items:center;
+  border:1px solid var(--edge); color:var(--ink-3)}
+.al-i svg{width:1.4em; height:1.4em; fill:currentColor}
+.al-b{flex:1; min-width:0; display:flex; flex-direction:column; gap:.15em}
+.al-t{font-size:1.5em; color:var(--ink-3); white-space:nowrap; overflow:hidden;
+  text-overflow:ellipsis; min-width:0; max-width:100%}
+.al-n{font-size:1.15em; letter-spacing:.1em; padding:.15em .55em; flex:none;
+  color:var(--ground); background:var(--gold); font-variant-numeric:tabular-nums}
+.al-n[hidden]{display:none}
+.alerts[data-sev="warn"] .al-i{border-color:rgba(var(--gold-rgb),.5); color:var(--gold)}
+.alerts[data-sev="warn"] .al-t{color:var(--ink)}
+.alerts[data-sev="crit"] .al-i{border-color:rgba(var(--red-rgb),.6); color:var(--red)}
+.alerts[data-sev="crit"] .al-t{color:var(--ink)}
+.alerts[data-sev="crit"] .al-n{background:var(--red)}
 
 /* engine data is absent until the dongle lands */
 .tag-off{position:absolute; top:-1px; right:-1px; font-size:.95em; letter-spacing:.12em;
@@ -242,7 +253,7 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
    as a broken layer rather than an empty one. */
 .mapwrap:not(.live) .map-ovl{display:none}
 /* Attribution is a licence condition of the OSM and CARTO tiles. */
-.map-attr{position:absolute; z-index:3; bottom:.35em; left:.6em; font-size:.95em;
+.map-attr{position:absolute; z-index:3; bottom:5.4em; right:.9em; font-size:.95em;
   color:var(--ink-3); background:var(--veil); padding:.15em .45em; pointer-events:none}
 .maplibregl-map{background:#030406}
 .dest-pin{width:1.4em; height:1.4em; border-radius:50%; background:var(--gold);
@@ -254,26 +265,69 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
   color:var(--neon); padding:.3em .6em; border:1px solid rgba(var(--neon-rgb),.3); background:var(--veil)}
 .chip b{color:var(--ink); font-weight:400}
 .chip.tl{top:1.1em; left:1.2em}
-.map-btn-recenter{
-  position:absolute; z-index:4; bottom:4.2em; right:1.2em; width:3.6em; height:3.6em; padding:.7em;
-  background:var(--veil); border:1px solid var(--gold); color:var(--gold); cursor:pointer;
+.map-btns{position:absolute; z-index:4; top:1.1em; right:1.2em;
+  display:flex; flex-direction:column; gap:.7em}
+.map-btn{width:3.6em; height:3.6em; padding:.75em; cursor:pointer;
+  background:var(--veil); border:1px solid rgba(var(--neon-rgb),.35); color:var(--neon)}
+.map-btn[hidden]{display:none}
+.map-btn svg{width:100%; height:100%; fill:currentColor}
+.map-btn:active{background:rgba(var(--neon-rgb),.18)}
+.map-btn.re{border-color:var(--gold); color:var(--gold)}
+
+/* Top-left stack: the next manoeuvre, and under it the limit for the road you
+   are on. Square, like everything else here — the rounded look of the phone
+   nav apps does not belong on this cluster. */
+.tl-stack{position:absolute; z-index:3; top:4.4em; left:1.2em;
+  display:flex; flex-direction:column; align-items:flex-start; gap:.8em}
+.turn{display:flex; align-items:center; gap:.7em; padding:.55em .9em .55em .65em;
+  background:var(--veil); border:1px solid rgba(var(--neon-rgb),.3); min-width:12em; max-width:22em}
+.turn[hidden]{display:none}
+.turn-i{width:2.6em; height:2.6em; fill:var(--neon); flex:none; transform-origin:50% 55%}
+.turn-b{display:flex; flex-direction:column; gap:.1em; min-width:0}
+.turn-d{font-family:var(--f-num); font-weight:700; font-size:2.1em; line-height:1; color:var(--num-ink)}
+.turn-d small{font-family:var(--f-mono); font-size:.42em; color:var(--ink-3); margin-left:.25em}
+.turn-s{font-size:1.15em; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+.limit{width:5.2em; height:5.2em; border-radius:50%; display:grid; place-items:center;
+  background:var(--veil-strong); border:.4em solid var(--ink-3);
+  transition:border-color .2s, box-shadow .2s}
+.limit[hidden]{display:none}
+.limit .num{font-family:var(--f-num); font-weight:800; font-size:2em; color:var(--ink); line-height:1}
+.limit.over{border-color:var(--red); box-shadow:0 0 1.3em rgba(var(--red-rgb),.5)}
+.limit.over .num{color:var(--red)}
+@media (prefers-reduced-motion:no-preference){
+  .limit.over{animation:limitpulse 1.1s ease-in-out infinite}
+  @keyframes limitpulse{50%{box-shadow:0 0 .2em rgba(var(--red-rgb),.15)}}
 }
-.map-btn-recenter[hidden]{display:none}
-.map-btn-recenter svg{width:100%; height:100%; fill:currentColor}
-.map-btn-search{
-  position:absolute; z-index:4; top:1.1em; right:1.2em; width:3.6em; height:3.6em; padding:.75em;
-  background:var(--veil); border:1px solid rgba(var(--neon-rgb),.35); color:var(--neon); cursor:pointer;
+.speed.over{color:var(--red); text-shadow:0 0 .2em rgba(var(--red-rgb),.4)}
+
+/* The band. One slot: trip figures, borrowed by a notification when one lands. */
+/* right clears the settings gear, which floats over this corner. */
+.band{position:absolute; z-index:4; left:1.2em; right:7.4em; bottom:1.1em}
+.slot{display:flex; align-items:center; gap:1em; width:100%; padding:.6em .9em;
+  background:var(--veil-strong); border:1px solid var(--edge); text-align:left;
+  font:inherit; color:inherit}
+.slot[hidden]{display:none}
+.figs{justify-content:space-between}
+.ts{display:flex; flex-direction:column; gap:.15em; min-width:0}
+.ts[hidden]{display:none}
+.ts .k{font-size:1em; letter-spacing:.2em; color:var(--ink-3); text-transform:uppercase}
+.ts .v{font-family:var(--f-num); font-weight:700; font-size:1.9em; line-height:1; color:var(--num-ink)}
+.ts.obd .v{color:var(--ink-3)}
+.ts.obd.live .v{color:var(--num-ink)}
+.note{border-color:rgba(var(--mint-rgb),.4); cursor:pointer}
+@media (prefers-reduced-motion:no-preference){
+  .note{animation:noterise .28s ease-out}
+  @keyframes noterise{from{opacity:0; transform:translateY(1.1em)}}
 }
-.map-btn-search svg{width:100%; height:100%; fill:currentColor}
-.map-btn-search:active{background:rgba(var(--neon-rgb),.18)}
-.chip.to{
-  top:1.1em; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:.55em;
-  max-width:64%; color:var(--neon); border-color:rgba(var(--neon-rgb),.45);
-}
-.chip.to[hidden]{display:none}
-.chip.to i{font-style:normal; color:var(--ink-2); text-transform:none; letter-spacing:.04em;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0}
-.to-arrow{width:1.3em; height:1.3em; fill:var(--neon); flex:none; transform-origin:50% 55%}
+.n-app{width:3em; height:3em; flex:none; display:grid; place-items:center;
+  font-family:var(--f-num); font-weight:800; font-size:1.3em; color:var(--ground);
+  background:var(--mint)}
+.n-b{flex:1; min-width:0; display:flex; flex-direction:column; gap:.1em}
+.n-k{font-size:1em; letter-spacing:.2em; text-transform:uppercase; color:var(--mint)}
+.n-t{font-size:1.45em; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.n-m{font-size:1.2em; color:var(--ink-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.n-age{font-size:1.15em; color:var(--ink-3); flex:none}
 
 /* ---------- search ---------- */
 .s-form{display:flex; gap:.6em; margin-top:1.2em}
@@ -300,12 +354,11 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .s-foot .crash-btn{margin-top:0; font-size:1.3em; padding:.6em 1.4em}
 .s-foot .go{border-color:var(--neon); color:var(--neon); text-decoration:none; display:inline-block}
 .s-foot .go[hidden]{display:none}
-.chip.bl{bottom:1.1em; left:1.2em}
-.chip.br{bottom:1.1em; right:5.4em}
+/* Both warnings sit top-centre now — the bottom of the map belongs to the band. */
 .chip.warm,.chip.hole{left:50%; transform:translateX(-50%); opacity:0; transition:opacity .25s;
   color:var(--gold); border-color:rgba(var(--gold-rgb),.45)}
 .chip.warm{top:1.1em}
-.chip.hole{bottom:1.1em; color:var(--red); border-color:rgba(var(--red-rgb),.45)}
+.chip.hole{top:4.4em; color:var(--red); border-color:rgba(var(--red-rgb),.45)}
 .chip.warm.on,.chip.hole.on{opacity:1}
 @media (prefers-reduced-motion:no-preference){
   .chip.warm.on{animation:pulse 1.4s ease-in-out infinite}
@@ -515,3 +568,27 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
   padding: .1em .4em; border-radius: 3px; vertical-align: middle;
   border: 1px solid var(--ink-3); color: var(--ink-3);
 }
+
+/* ---------- alerts panel ---------- */
+/* Two lists that need the full height, so this layer packs from the top
+   rather than centring the way the short ones do. */
+.layer-alerts{justify-content:flex-start; gap:1em}
+.al-cols{display:grid; grid-template-columns:1fr 1fr; gap:1.4em; min-height:0; flex:1}
+.al-col{display:flex; flex-direction:column; min-height:0}
+.al-head{display:flex; align-items:center; gap:.7em; padding-bottom:.5em;
+  border-bottom:1px solid var(--edge)}
+.al-h{font-size:1.35em; letter-spacing:.26em; text-transform:uppercase}
+.al-h.bike{color:var(--gold)}
+.al-h.phone{color:var(--mint)}
+.al-c{font-size:1.15em; color:var(--ink-3); margin-left:auto}
+.al-list{overflow-y:auto; display:flex; flex-direction:column; gap:.5em; padding-top:.6em}
+.al-item{display:flex; gap:.8em; align-items:flex-start; padding:.55em .7em; text-align:left;
+  background:var(--panel); border:0; border-left:2px solid var(--edge); font:inherit; color:inherit}
+.al-item.warn{border-left-color:var(--gold)}
+.al-item.crit{border-left-color:var(--red)}
+.al-item.info{border-left-color:var(--mint)}
+.al-ib{flex:1; min-width:0; display:flex; flex-direction:column; gap:.1em}
+.al-it{font-size:1.35em; color:var(--ink)}
+.al-is{font-size:1.15em; color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.al-ia{font-size:1.1em; color:var(--ink-3); flex:none}
+.al-empty{font-size:1.25em; color:var(--ink-3); padding:.8em .1em; line-height:1.5}

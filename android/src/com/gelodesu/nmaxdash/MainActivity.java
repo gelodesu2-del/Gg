@@ -2,9 +2,11 @@ package com.gelodesu.nmaxdash;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.provider.Settings;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -94,7 +96,57 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void btWrite(final String s) {
             main.post(new Runnable() { public void run() { doWrite(s); } });
         }
+        /* Notification access cannot be requested with requestPermissions —
+           it is granted in a system settings screen, so the page asks whether
+           it holds it and sends the rider there when it does not. */
+        @JavascriptInterface public boolean noteEnabled() { return listenerGranted(); }
+        @JavascriptInterface public void noteSettings() {
+            main.post(new Runnable() { public void run() { openListenerSettings(); } });
+        }
     }
+
+    /** Reads the system's list of enabled listeners, by package rather than by
+        substring: "com.example.nmaxdash" contains our name without being us. */
+    private boolean listenerGranted() {
+        try {
+            String flat = Settings.Secure.getString(getContentResolver(),
+                "enabled_notification_listeners");
+            if (flat == null || flat.length() == 0) return false;
+            String mine = getPackageName();
+            for (String entry : flat.split(":")) {
+                ComponentName cn = ComponentName.unflattenFromString(entry);
+                if (cn != null && mine.equals(cn.getPackageName())) return true;
+            }
+        } catch (Exception e) { /* treat an unreadable setting as not granted */ }
+        return false;
+    }
+
+    private void openListenerSettings() {
+        try {
+            Intent i = new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS");
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (Exception e2) { /* nothing to open */ }
+        }
+    }
+
+    /* The listener runs whether or not the dash is in front of the rider, so
+       the sink is attached only while it is: a notification with no dash on
+       screen has nowhere useful to go. */
+    private final NoteService.Sink noteSink = new NoteService.Sink() {
+        public void onNote(final String json) {
+            main.post(new Runnable() { public void run() {
+                if (web != null) {
+                    web.evaluateJavascript(
+                        "window.__nmaxNote&&window.__nmaxNote(" + JSONObject.quote(json) + ")", null);
+                }
+            }});
+        }
+    };
 
     @Override
     protected void onCreate(Bundle state) {
@@ -514,8 +566,22 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onPause() { super.onPause(); if (web != null) web.onPause(); }
+    protected void onPause() {
+        super.onPause();
+        NoteService.setSink(null);
+        if (web != null) web.onPause();
+    }
 
     @Override
-    protected void onResume() { super.onResume(); if (web != null) { web.onResume(); immersive(); } }
+    protected void onResume() {
+        super.onResume();
+        NoteService.setSink(noteSink);
+        if (web != null) { web.onResume(); immersive(); }
+    }
+
+    @Override
+    protected void onDestroy() {
+        NoteService.setSink(null);
+        super.onDestroy();
+    }
 }

@@ -6,10 +6,13 @@ import { CFG, S, settings } from "./state.js";
 import { nearestRough } from "./trips.js";
 import * as nav from "./nav.js";
 import * as mapview from "./mapview.js";
+import * as alerts from "./alerts.js";
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
-const PIPS = 12;
+/* Segments in the shift bar. The single row spans the whole dash, so it
+   carries the resolution the two-leg version needed 32 for. */
+const SEGS = 28;
 
 let TH = {};
 let roughAt = 0;
@@ -29,7 +32,7 @@ function attr(el, name, val, key) {
   memo[key] = val;
   el.setAttribute(name, val);
 }
-let segCache = [], pipCache = [];
+let segCache = [];
 
 export function readTheme() {
   const cs = getComputedStyle(document.getElementById("app"));
@@ -43,7 +46,6 @@ export function readTheme() {
     glow: (a) => "rgba(" + g("--neon-rgb") + "," + a + ")"
   };
   segCache = [];
-  pipCache = [];
   for (const k in memo) delete memo[k];
   return TH;
 }
@@ -121,9 +123,7 @@ const lpt = (deg, rad) => [
 ];
 
 export function build() {
-  $("shift").innerHTML = Array.from({ length: 20 }, () => '<span class="seg"></span>').join("");
-  $("shift-v").innerHTML = Array.from({ length: 12 }, () => '<span class="seg"></span>').join("");
-  $("pips").innerHTML = Array.from({ length: PIPS }, () => '<span class="pip"></span>').join("");
+  $("shift").innerHTML = Array.from({ length: SEGS }, () => '<span class="seg"></span>').join("");
 
   const [x0, y0] = lpt(-LEAN.max, LEAN.r), [x1, y1] = lpt(LEAN.max, LEAN.r);
   $("lean-track").setAttribute("d",
@@ -141,7 +141,6 @@ export function build() {
   $("peaks").innerHTML =
     '<circle class="pk" id="pk-l" r="2.8" opacity="0"/><circle class="pk" id="pk-r" r="2.8" opacity="0"/>';
   segCache = [];
-  pipCache = [];
 }
 
 /* Runs every frame: only what the eye tracks continuously. */
@@ -166,9 +165,16 @@ export function renderSlow(now) {
   setNum($("speed"), S.gpsOk ? Math.round(S.speed) : "––");
   write($("lock"), "textContent", !S.gpsOk ? "…" : (now - S.lastFix > 6000 ? "LOST" : "LOCK"), "lock");
 
+  // Speed limit: a roundel under the GPS chip, and the speed itself turns with
+  // it, so it reads from whichever half of the screen the eye is already on.
   const over = S.gpsOk && S.speed > settings.speedLimit + 2;
-  if (memo.slim !== over) { memo.slim = over; $("slim").classList.toggle("on", over); }
-  write($("slim-n"), "textContent", settings.speedLimit, "slimn");
+  if (memo.slim !== over) {
+    memo.slim = over;
+    $("limit").classList.toggle("over", over);
+    $("speed").classList.toggle("over", over);
+  }
+  if (memo.limshow !== true) { memo.limshow = true; $("limit").hidden = false; }
+  write($("limit-n"), "textContent", settings.speedLimit, "slimn");
 
   // peak hold
   const L = S.maxL > 3 ? Math.min(S.maxL, LEAN.max) : null;
@@ -188,10 +194,10 @@ export function renderSlow(now) {
   write($("peak-l"), "textContent", "L " + String(Math.round(S.maxL)).padStart(2, "0"), "pl");
   write($("peak-r"), "textContent", "R " + String(Math.round(S.maxR)).padStart(2, "0"), "pr");
 
-  // The sweep: across the top, then down the right edge. Driven by RPM once
-  // a dongle answers; until then by GPS speed, so the bar lives from day one
+  // The sweep runs left to right along the top border. Driven by RPM once a
+  // dongle answers; until then by GPS speed, so the bar lives from day one
   // instead of sitting dark until hardware arrives.
-  const segs = [...$("shift").children, ...$("shift-v").children];
+  const segs = $("shift").children;
   const N = segs.length;
   let frac = null;
   if (S.rpm !== null) frac = clamp((S.rpm - 3000) / 6300, 0, 1);
@@ -228,33 +234,14 @@ export function renderSlow(now) {
   live("rpm", S.rpm !== null);
   setNum($("rpm"), S.rpm === null ? "—" : Math.round(S.rpm / 10) * 10);
 
-  live("fuel-v", S.fuel !== null);
   live("range", S.fuel !== null);
   if (S.fuel === null) {
-    setNum($("fuel-v"), "—");
     write($("range"), "textContent", "—", "rng");
     attr($("range-ring"), "r", "0", "rr");
-    const pips = $("pips").children;
-    for (let i = 0; i < pips.length; i++) {
-      if (pipCache[i] === TH.off) continue;
-      pipCache[i] = TH.off;
-      pips[i].style.background = TH.off;
-      pips[i].style.boxShadow = "none";
-    }
   } else {
-    setNum($("fuel-v"), S.fuel.toFixed(1));
     const range = S.fuel * CFG.kmPerL;
     write($("range"), "textContent", Math.round(range) + " km", "rng");
     attr($("range-ring"), "r", clamp(18 + range / 210 * 74, 14, 96).toFixed(1), "rr");
-    const pips = $("pips").children, litP = Math.ceil(S.fuel / CFG.tank * pips.length);
-    const low = litP <= 2;
-    for (let i = 0; i < pips.length; i++) {
-      const col = i < litP ? (low ? TH.gold : TH.neon) : TH.off;
-      if (pipCache[i] === col) continue;
-      pipCache[i] = col;
-      pips[i].style.background = col;
-      pips[i].style.boxShadow = i < litP ? "0 0 .4em " + col : "none";
-    }
   }
 
   live("clt", S.temp !== null);
@@ -264,33 +251,106 @@ export function renderSlow(now) {
     write($("clt"), "textContent", Math.round(S.temp) + "°C", "clt");
     const hot = S.temp > 108, warmish = S.temp > 100;
     const col = hot ? TH.red : warmish ? TH.gold : "";
-    if (memo.cltc !== col) {
-      memo.cltc = col;
-      $("clt-chip").style.color = col;
-      $("clt-chip").style.borderColor = col;
-    }
+    if (memo.cltc !== col) { memo.cltc = col; $("clt").style.color = col; }
   }
 
-  // destination homing — how far, and which way from the saddle
-  const home = nav.homing();
-  if (memo.toShown !== !!home) { memo.toShown = !!home; $("to-chip").hidden = !home; }
-  if (home) {
-    // Road distance and time when a route came back; straight-line otherwise.
-    const ri = mapview.routeInfo();
-    write($("to-dist"), "textContent",
-      ri ? nav.fmtDistance(ri.m) + " · " + Math.max(1, Math.round(ri.s / 60)) + " min"
-         : nav.fmtDistance(home.m), "tod");
-    write($("to-name"), "textContent", home.label, "ton");
-    // transform as an attribute does not apply to an outer <svg>; CSS does.
-    const rot = "rotate(" + home.relative.toFixed(0) + "deg)";
-    if (memo.toa !== rot) { memo.toa = rot; $("to-arrow").style.transform = rot; }
-  }
+  live("volts", S.volts !== null);
+  write($("volts"), "textContent", S.volts === null ? "—" : S.volts.toFixed(1) + " V", "volt");
 
-  // rough road ahead
+  renderTurn(now);
+  renderBand();
+  renderAlertBlock();
+
+  // rough road ahead. Published on S so the alerts list can read it too.
   if (now - roughAt > 2500) { roughAt = now; rough = nearestRough(); }
+  S.nearJolt = rough;
   const show = !!rough && S.speed > 12;
   if (memo.hole !== show) { memo.hole = show; $("holewarn").classList.toggle("on", show); }
   if (show) write($("holewarn"), "textContent", "Rough road · " + Math.round(rough.d / 5) * 5 + " m", "holet");
+}
+
+/* The block where fuel used to be: the worst thing the bike is saying, and a
+   count of how many need answering. */
+function renderAlertBlock() {
+  const s = alerts.summary();
+  write($("al-t"), "textContent", s.text, "alt");
+  if (memo.alsev !== s.sev) { memo.alsev = s.sev; $("alerts-btn").dataset.sev = s.sev; }
+  const n = s.count + alerts.unread();
+  if (memo.aln !== n) {
+    memo.aln = n;
+    $("al-n").hidden = n === 0;
+    $("al-n").textContent = n;
+  }
+}
+
+/* The manoeuvre card. With a route it shows the next turn; with only a pin
+   dropped it falls back to the compass bearing, which is still the honest
+   answer to "which way now". */
+const MANEUVER = {
+  left:   "M10 4L4 10l6 6v-4h5a3 3 0 013 3v5h4v-5a7 7 0 00-7-7h-5V4z",
+  right:  "M14 4l6 6-6 6v-4H9a3 3 0 00-3 3v5H2v-5a7 7 0 017-7h5V4z",
+  arrive: "M12 2a7 7 0 00-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1112 6.5a2.5 2.5 0 010 5z",
+  ahead:  "M12 2l7 19-7-5-7 5z"
+};
+
+function renderTurn(now) {
+  const step = mapview.nextStep ? mapview.nextStep() : null;
+  const home = nav.homing();
+  const showTurn = !!(step || home);
+  if (memo.turnShown !== showTurn) { memo.turnShown = showTurn; $("turn").hidden = !showTurn; }
+  if (!showTurn) return;
+
+  if (step) {
+    const kind = /left/i.test(step.maneuver) ? "left"
+               : /right/i.test(step.maneuver) ? "right"
+               : /destination|arrive/i.test(step.maneuver) ? "arrive" : "ahead";
+    attr($("turn-p"), "d", MANEUVER[kind], "turnp");
+    if (memo.turnRot !== "0") { memo.turnRot = "0"; $("turn-i").style.transform = ""; }
+    write($("turn-d"), "textContent", nav.fmtDistance(step.m), "turnd");
+    write($("turn-s"), "textContent", step.road || "", "turns");
+  } else {
+    attr($("turn-p"), "d", MANEUVER.ahead, "turnp");
+    const rot = "rotate(" + home.relative.toFixed(0) + "deg)";
+    if (memo.turnRot !== rot) { memo.turnRot = rot; $("turn-i").style.transform = rot; }
+    write($("turn-d"), "textContent", nav.fmtDistance(home.m), "turnd");
+    write($("turn-s"), "textContent", home.label, "turns");
+  }
+}
+
+/* The band along the bottom. Trip figures by default; a phone notification
+   borrows the slot for a few seconds and then gives it straight back. */
+function renderBand() {
+  const note = alerts.current();
+  const showNote = !!note;
+  if (memo.bandNote !== showNote) {
+    memo.bandNote = showNote;
+    $("slot-note").hidden = !showNote;
+    $("slot-trip").hidden = showNote;
+  }
+  if (showNote) {
+    write($("n-app"), "textContent", (note.app || "?").slice(0, 1).toUpperCase(), "napp");
+    write($("n-k"), "textContent", note.app || "Phone", "nk");
+    write($("n-t"), "textContent", note.title || note.app || "", "nt");
+    write($("n-m"), "textContent", note.body || "", "nm");
+    write($("n-age"), "textContent", alerts.fmtAge(note.at), "nage");
+    return;
+  }
+
+  const ri = mapview.routeInfo();
+  const hasRoute = !!ri;
+  if (memo.bandEta !== hasRoute) {
+    memo.bandEta = hasRoute;
+    $("ts-eta").hidden = !hasRoute;
+    $("ts-left").hidden = !hasRoute;
+  }
+  if (hasRoute) {
+    // Date.now, not the frame timestamp: an arrival time built from
+    // milliseconds-since-page-load lands in 1970.
+    const at = new Date(Date.now() + ri.s * 1000);
+    write($("eta"), "textContent",
+      String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0"), "eta");
+    write($("dleft"), "textContent", nav.fmtDistance(ri.m), "dleft");
+  }
 }
 
 /* Spotify block. Kept out of the frame loop — it only changes when a poll
