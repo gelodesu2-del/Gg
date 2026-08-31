@@ -192,6 +192,56 @@ not for distribution and is not on any store.
 > fresh key, whose APK will only install after uninstalling the old app, taking
 > every trip, setting and calibration with it.
 
+### Flood and closure warnings
+
+Traffic is deliberately not here. Google already routes around it with live
+data and no model is going to beat that. What no routing API has for Metro
+Manila is **flooding and short-notice closures** — those live in prose, on MMDA
+and PAGASA pages and in the news, which is the shape of problem a model is
+actually good at: read the mess, emit geofences.
+
+`worker/` is a **separate Cloudflare Worker**, not part of this deployment. The
+dash is static files with no build step; bolting a function onto it would risk
+a working deployment for a feature that is allowed to fail. If the Worker is
+down or unset, the dash simply has no hazards and says nothing about it.
+
+**Deploying it**
+
+```bash
+cd worker
+npm install
+npx wrangler kv namespace create HAZARDS   # put the id in wrangler.toml
+npx wrangler secret put ANTHROPIC_API_KEY  # a separate Anthropic API account
+npx wrangler deploy
+```
+
+Then paste the Worker's URL into Settings → **Keys** → *Hazard feed*. Until you
+do, none of this runs.
+
+**What it costs.** Cost is controlled by the cache, not a cron. A cron scanning
+for floods at 3am while the bike is parked is most of the bill for none of the
+value, so the model runs only when a rider asks and the cached answer has aged
+out — 20 minutes, or 8 km of travel, whichever comes first. At roughly \$0.16 a
+scan on Claude Opus 5, a few rides a day lands around \$10–15 a month. `MODEL`
+in `wrangler.toml` switches it to `claude-haiku-4-5` for about a fifth of that,
+at some loss on ambiguous reports. The server-side web search tool also bills
+per search on top of tokens — check the current rate before settling on a
+cadence. Note that this is an **Anthropic API account**, billed separately from
+a Claude subscription.
+
+**Why it only ever advises.** A model reading news for flood locations is right
+often enough to be worth showing and wrong often enough that a silent detour
+would be the wrong response. So a hazard arrives as a warning carrying its
+source, its age and its own confidence, and the rider decides. Nothing reroutes
+by itself. Anything the Worker returns without a real position on the map is
+dropped by the client before it can become a pin — a hazard without coordinates
+is a sentence, not a hazard.
+
+On the dash a hazard ahead takes the road-warning chip, outranking a logged
+pothole; in the alerts panel it sits in the **Bike** list with its distance and
+age. "Ahead" means within about 70° of where the bike is pointing, so a flood
+already ridden through stops warning about itself.
+
 ### Phone notifications on the dash
 
 WebView has no way to read the notification shade — no browser does — so this
@@ -343,6 +393,13 @@ with no devtools attached.
 - **The dash stutters** — Settings → **Screen effects** off.
 - **No notifications on the map** — Settings → **Phone notifications** must
   read *On*. If it reads *App only* you are in a browser tab, not the app.
+- **Service figures look wrong** — the odometer counts only what this app has
+  logged. Settings → **Odometer offset** adds what the bike had on it the day
+  logging started. Tap any service row to change its interval or record that
+  it was done.
+- **No hazards ever appear** — Settings → diagnostics has a **Hazards** line.
+  *no feed set* means the Worker URL is missing; an error there is the Worker
+  itself. An empty list on a dry day is the normal and correct answer.
 - **The dongle never appears in the scan** — it is a classic-Bluetooth unit,
   not BLE. Pair it in Android's Bluetooth settings (PIN usually `1234`), then
   scan again: paired dongles are listed straight away, tagged `paired`.

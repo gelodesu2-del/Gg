@@ -547,11 +547,13 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .odo .v{font-family:var(--f-num); font-weight:700; font-size:2.4em}
 .odo .v small{font-family:var(--f-mono); font-size:.4em; color:var(--ink-3); margin-left:.3em}
 .svc{display:grid; grid-template-columns:repeat(auto-fill,minmax(26em,1fr)); gap:.7em}
-.svcrow{border:1px solid var(--edge); background:var(--panel); padding:.85em 1.05em}
+.svcrow{display:block; width:100%; text-align:left; font:inherit; color:inherit; cursor:pointer;
+  border:1px solid var(--edge); background:var(--panel); padding:.85em 1.05em}
+.svcrow:active{border-color:var(--neon)}
 .svchead{display:flex; align-items:baseline; justify-content:space-between; gap:1em}
 .svchead .n{font-size:1.35em; color:var(--ink)}
 .svchead .due{font-size:1.15em; color:var(--ink-3)}
-.svcbar{height:.75em; background:var(--off); margin-top:.55em; box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+.svcbar{display:block; height:.75em; background:var(--off); margin-top:.55em; box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
 .svcbar i{display:block; height:100%; background:var(--neon)}
 .svcrow.warn .svcbar i{background:var(--gold)}
 .svcrow.warn .due{color:var(--gold)}
@@ -592,3 +594,10 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .al-is{font-size:1.15em; color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .al-ia{font-size:1.1em; color:var(--ink-3); flex:none}
 .al-empty{font-size:1.25em; color:var(--ink-3); padding:.8em .1em; line-height:1.5}
+
+/* ---------- service editor ---------- */
+.svcedit{display:grid; gap:.8em; margin-top:1.4em; max-width:34em}
+.svcf{display:flex; align-items:center; gap:.9em}
+.svcf > span{font-size:1.3em; color:var(--ink-2); flex:1}
+.svcf .fld{width:9em; font-size:1.4em; text-align:right}
+.svcf > i{font-style:normal; font-size:1.2em; color:var(--ink-3); width:2em}

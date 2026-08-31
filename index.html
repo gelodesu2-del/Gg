@@ -177,6 +177,11 @@
               <span class="t">Spotify client ID<i>Optional — Premium needed to control</i></span>
               <input class="fld" id="sp-id" type="text" inputmode="text" autocomplete="off" spellcheck="false" placeholder="Client ID" aria-label="Spotify client ID">
             </div>
+            <div class="step">
+              <span class="n">5</span>
+              <span class="t">Hazard feed<i>Optional — flood and closure reports</i></span>
+              <input class="fld" id="hz-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…workers.dev" aria-label="Hazard feed URL">
+            </div>
           </div>
           <button class="crash-btn" id="setup-done" type="button">Start</button>
         </div>
@@ -190,6 +195,7 @@
             <div class="srow"><span class="t">Keep screen awake<i>Wake lock while riding</i></span><button class="sw on" id="wake-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Crash detection<i>Prompts to text your contact</i></span><button class="sw on" id="crash-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Speed limit<i>Soft warning above this</i></span><input class="fld sm" id="lim-in" type="number" min="20" max="140" step="5" aria-label="Speed limit"></div>
+            <div class="srow"><span class="t">Odometer offset<i>What the bike read the day logging started</i></span><input class="fld sm" id="odo-in" type="number" min="0" max="9999999" step="1" inputmode="numeric" aria-label="Odometer offset in kilometres"></div>
             <div class="srow"><span class="t">Phone notifications<i id="note-sub">Show messages and calls on the map</i></span><button class="pill" id="note-btn" type="button">Off</button></div>
             <div class="srow"><span class="t">Colors<i>Dark and light sets</i></span><button class="pill" id="colors-btn" type="button">Open</button></div>
             <div class="srow"><span class="t">Map<i>OpenStreetMap needs no account</i></span><button class="pill" id="map-btn" type="button">OpenStreetMap</button></div>
@@ -372,12 +378,37 @@
           <div class="tabpane" data-tab="service">
             <div class="odo"><span class="k">Odometer</span><span class="v" id="odo">0<small>km</small></span></div>
             <div class="svc" id="svc"></div>
-            <p class="svcnote">Intervals are editable defaults taken from commonly cited figures — confirm them
-              against your owner's manual before trusting them. The odometer counts only distance this app has
-              logged, so set a starting offset in settings if you want it to match the bike.</p>
+            <p class="svcnote">Tap any item to change its interval or record that it was done. The defaults are
+              commonly cited figures, not gospel — <b>check them against your owner's manual</b>. The odometer counts
+              only distance this app has logged; Settings → <b>Odometer offset</b> makes it match the bike.</p>
           </div>
         </div>
       </div>
+      <!-- One service item. Everything about it is editable because the
+           defaults are commonly cited figures, not gospel. It lives in this
+           pane rather than the dash's because a layer is positioned against
+           its own pane, and the dash's is translated off-screen from here. -->
+      <div class="layer layer-svc" id="layer-svc">
+        <div class="ltitle" id="svc-name">SERVICE</div>
+        <div class="lsub" id="svc-state">—</div>
+        <div class="svcedit">
+          <label class="svcf"><span>Interval</span>
+            <input class="fld" id="svc-every" type="number" min="100" max="200000" step="100" inputmode="numeric" aria-label="Interval in kilometres">
+            <i>km</i>
+          </label>
+          <label class="svcf"><span>Last done at</span>
+            <input class="fld" id="svc-last" type="number" min="0" max="9999999" step="1" inputmode="numeric" aria-label="Odometer reading at last service">
+            <i>km</i>
+          </label>
+        </div>
+        <div class="s-foot">
+          <button class="crash-btn go" id="svc-now" type="button">Mark done now</button>
+          <button class="crash-btn" id="svc-save" type="button">Save</button>
+          <button class="crash-btn" id="svc-reset" type="button">Reset to default</button>
+          <button class="crash-btn" id="svc-close" type="button">Close</button>
+        </div>
+      </div>
+
     </section>
 
   </div>

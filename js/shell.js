@@ -10,6 +10,8 @@ import * as sos from "./sos.js";
 import * as nav from "./nav.js";
 import * as obd from "./obd.js";
 import * as alerts from "./alerts.js";
+import * as hazards from "./hazards.js";
+import { SERVICE_DEFAULTS } from "./state.js";
 
 const $ = (id) => document.getElementById(id);
 /* name, two preview chips, mode. The mode is what flips the ground tokens —
@@ -276,6 +278,13 @@ export function init() {
          "Nothing to report. Warm-up, service and road warnings appear here as they happen.");
     $("al-cb").textContent = b.length ? b.length + " active" : "clear";
 
+    if (hazards.configured() && hazards.status()) {
+      const warn = document.createElement("div");
+      warn.className = "al-empty";
+      warn.textContent = "Hazard feed unreachable: " + hazards.status();
+      $("al-bike").appendChild(warn);
+    }
+
     const ph = alerts.phone();
     fill($("al-phone"), ph.map((n) => row(n.read ? "info" : "crit",
       (n.app ? n.app + " · " : "") + (n.title || ""), n.body, alerts.fmtAge(n.at))),
@@ -384,7 +393,66 @@ export function init() {
     $("app").dataset.fx = togSwitch(e.currentTarget, "effects") ? "on" : "off";
   });
   $("lim-in").addEventListener("change", (e) => save({ speedLimit: Math.max(20, Math.min(140, +e.target.value || 60)) }));
+  $("odo-in").addEventListener("change", (e) => {
+    save({ odoOffset: Math.max(0, Math.min(9999999, Math.round(+e.target.value) || 0)) });
+    logs.render();
+  });
   $("keys-btn").addEventListener("click", () => { layer("setup"); syncSetup(); });
+
+  /* ---- service editor ---- */
+  /* The row's index is its identity: names are editable in principle and
+     positions are not, so nothing here is keyed on the label. */
+  let svcIdx = -1;
+
+  $("svc").addEventListener("click", (e) => {
+    const row = e.target.closest("[data-svc]");
+    if (!row) return;
+    svcIdx = +row.dataset.svc;
+    openSvc();
+  });
+
+  function openSvc() {
+    const item = logs.service()[svcIdx];
+    if (!item) return;
+    const odo = logs.odoNow();
+    const left = item.every - Math.max(0, odo - (item.last || 0));
+    $("svc-name").textContent = String(item.n).toUpperCase();
+    $("svc-state").textContent = (left <= 0
+      ? "Overdue by " + Math.round(-left).toLocaleString("en-US") + " km."
+      : "Due in " + Math.round(left).toLocaleString("en-US") + " km.") +
+      " Odometer reads " + odo.toLocaleString("en-US") + " km.";
+    $("svc-every").value = item.every;
+    $("svc-last").value = item.last || 0;
+    layer("svc");
+  }
+
+  function writeSvc(patch) {
+    const list = logs.service().map((it, i) => (i === svcIdx ? Object.assign({}, it, patch) : it));
+    logs.saveService(list);
+    logs.render();
+    openSvc();
+  }
+
+  $("svc-now").addEventListener("click", () => {
+    if (svcIdx < 0) return;
+    writeSvc({ last: logs.odoNow() });
+    toast("Marked done at " + logs.odoNow().toLocaleString("en-US") + " km");
+  });
+  $("svc-save").addEventListener("click", () => {
+    if (svcIdx < 0) return;
+    const every = Math.max(100, Math.min(200000, Math.round(+$("svc-every").value) || 1000));
+    const last = Math.max(0, Math.min(9999999, Math.round(+$("svc-last").value) || 0));
+    writeSvc({ every: every, last: last });
+    toast("Saved");
+  });
+  $("svc-reset").addEventListener("click", () => {
+    if (svcIdx < 0) return;
+    const def = SERVICE_DEFAULTS[svcIdx];
+    if (!def) return;
+    writeSvc({ every: def.every });
+    toast("Interval back to " + def.every.toLocaleString("en-US") + " km");
+  });
+  $("svc-close").addEventListener("click", () => layer(""));
 
   // ---- emergency contacts ----
   $("ice-pick").addEventListener("click", async () => {
@@ -445,6 +513,10 @@ export function init() {
       spotifyId: $("sp-id").value.trim(),
       setupDone: true
     });
+    // setUrl clears whatever the previous feed said before asking the new one.
+    if ($("hz-url").value.trim() !== (settings.hazardUrl || "")) {
+      hazards.setUrl($("hz-url").value.trim());
+    }
     layer("");
     // Grant is skippable, so Start must also start the sensors — both are
     // idempotent, so tapping Grant first costs nothing.
@@ -655,6 +727,17 @@ function renderDiag() {
         " temp " + (obd.status.pids.temp ? "✓" : "✗") + " fuel " + (obd.status.pids.fuel ? "✓" : "✗") +
         (obd.status.volts ? " · " + obd.status.volts.toFixed(1) + " V" : "")
       : obd.status.state === "idle" ? "not connected" : escapeHtml(obd.status.state)) +
+    "<br><b>Hazards</b> " + (!hazards.configured()
+      ? "no feed set"
+      : hazards.status()
+        ? '<span class="bad">' + escapeHtml(hazards.status()) + "</span>"
+        : hazards.checkedAt()
+          ? '<span class="ok">' + hazards.hazards().length + " active</span> · checked " +
+            Math.max(1, Math.round((Date.now() - hazards.checkedAt()) / 60000)) + " min ago"
+          : "waiting for a fix") +
+    "<br><b>Notifications</b> " + (!alerts.hasShell()
+      ? "app only"
+      : alerts.listenerOn() ? '<span class="ok">on</span>' : "access not granted") +
     "<br><b>Mount</b> " + (settings.cal
       ? '<span class="ok">calibrated</span> · ' + (settings.cal.pitch ?? "?") + "° · north " +
         (settings.cal.northAlpha === null ? "n/a" : Math.round(settings.cal.northAlpha) + "°")
@@ -677,6 +760,7 @@ function syncSettings() {
   $("font-btn").textContent = settings.numeralFont === "auto" ? "Auto"
     : settings.numeralFont === "safe" ? "Safe" : "Orbitron";
   $("lim-in").value = settings.speedLimit;
+  $("odo-in").value = settings.odoOffset || 0;
   $("ice-tpl").value = sos.template();
   $("ice-pick").hidden = !sos.pickerSupported();
   renderChannels();
@@ -724,6 +808,7 @@ function syncSetup() {
   $("map-key").value = settings.mapKey || "";
   $("map-id").value = settings.mapId || "";
   $("sp-id").value = settings.spotifyId || "";
+  $("hz-url").value = settings.hazardUrl || "";
 }
 
 export { goto, syncSetup };

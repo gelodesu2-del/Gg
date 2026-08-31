@@ -117,17 +117,30 @@ export function render() {
   const odo = Math.round(trips.odometer() + (settings.odoOffset || 0));
   $("odo").innerHTML = fmt(odo) + "<small>km</small>";
   const svc = store.get("service", SERVICE_DEFAULTS);
-  $("svc").innerHTML = svc.map((s) => {
+  // Buttons, not rows: each one opens the editor for that item. The index is
+  // the identity — names are editable in principle and positions are not.
+  $("svc").innerHTML = svc.map((s, i) => {
     const done = Math.max(0, odo - (s.last || 0));
     const pct = done / s.every * 100;
     const left = s.every - done;
     const cls = pct >= 100 ? " over" : pct >= 85 ? " warn" : "";
     const due = left <= 0 ? "overdue by " + fmt(-left) + " km" : "due in " + fmt(left) + " km";
-    return '<div class="svcrow' + cls + '"><div class="svchead"><span class="n">' + esc(s.n) + "</span>" +
-      '<span class="due">' + due + "</span></div>" +
-      '<div class="svcbar"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></div></div>';
+    return '<button class="svcrow' + cls + '" type="button" data-svc="' + i + '">' +
+      '<span class="svchead"><span class="n">' + esc(s.n) + "</span>" +
+      '<span class="due">' + due + "</span></span>" +
+      '<span class="svcbar"><i style="width:' + Math.min(100, pct).toFixed(1) + '%"></i></span></button>';
   }).join("");
 }
+
+/* The odometer the service rows are measured against: what this app has
+   logged, plus whatever the bike had on it the day logging started. */
+export function odoNow() {
+  return Math.round(trips.odometer() + (settings.odoOffset || 0));
+}
+
+export function service() { return store.get("service", SERVICE_DEFAULTS); }
+
+export function saveService(list) { store.set("service", list); }
 
 function card(k, v, u) {
   return '<div class="wkc"><span class="k">' + k + '</span><span class="v">' + v +

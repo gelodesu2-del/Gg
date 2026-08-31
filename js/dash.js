@@ -7,6 +7,7 @@ import { nearestRough } from "./trips.js";
 import * as nav from "./nav.js";
 import * as mapview from "./mapview.js";
 import * as alerts from "./alerts.js";
+import * as hazards from "./hazards.js";
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -261,12 +262,21 @@ export function renderSlow(now) {
   renderBand();
   renderAlertBlock();
 
-  // rough road ahead. Published on S so the alerts list can read it too.
+  // One warning chip for the road ahead, not a stack of them. Water outranks
+  // a pothole, so whichever is worse takes the slot.
   if (now - roughAt > 2500) { roughAt = now; rough = nearestRough(); }
   S.nearJolt = rough;
-  const show = !!rough && S.speed > 12;
-  if (memo.hole !== show) { memo.hole = show; $("holewarn").classList.toggle("on", show); }
-  if (show) write($("holewarn"), "textContent", "Rough road · " + Math.round(rough.d / 5) * 5 + " m", "holet");
+  const flood = hazards.ahead();
+  const text = flood
+    ? (flood.kind === "flood" ? "Flood" : "Closed") + " · " + flood.road + " · " + flood.d + " m"
+    : rough && S.speed > 12
+      ? "Rough road · " + Math.round(rough.d / 5) * 5 + " m"
+      : "";
+  if (memo.hole !== text) {
+    memo.hole = text;
+    $("holewarn").classList.toggle("on", !!text);
+    if (text) $("holewarn").textContent = text;
+  }
 }
 
 /* The block where fuel used to be: the worst thing the bike is saying, and a

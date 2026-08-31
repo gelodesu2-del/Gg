@@ -1,0 +1,19 @@
+name = "nmax-hazards"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+# The Anthropic SDK is a Node library; this is what lets it run on Workers.
+compatibility_flags = ["nodejs_compat"]
+
+# Answers are cached here so a second rider request in the same 20 minutes
+# costs nothing. Create with:  wrangler kv namespace create HAZARDS
+[[kv_namespaces]]
+binding = "HAZARDS"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[vars]
+# Opus is the default. Set to claude-haiku-4-5 to cut the per-scan cost by
+# roughly five, at some loss on ambiguous reports.
+MODEL = "claude-opus-5"
+
+# ANTHROPIC_API_KEY is a secret, not a var:
+#   wrangler secret put ANTHROPIC_API_KEY

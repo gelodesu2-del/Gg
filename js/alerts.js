@@ -13,6 +13,7 @@
 import { CFG, S, settings, SERVICE_DEFAULTS } from "./state.js";
 import * as store from "./store.js";
 import * as trips from "./trips.js";
+import * as hazards from "./hazards.js";
 
 const MAX_NOTES = 40;
 const NOTE_LIFE = 6000;        // ms a banner holds the band before it hands it back
@@ -47,6 +48,16 @@ export function bike() {
     add("warn", "Over the limit",
         Math.round(S.speed) + " in a " + settings.speedLimit + " zone");
   }
+  // Flooding and closures, from the advisory feed. Severity follows the
+  // report's own confidence: a model reading news is not an eyewitness, and
+  // the list should not pretend otherwise.
+  for (const h of hazards.near(1500)) {
+    add(h.severity === "impassable" && h.confidence !== "low" ? "crit" : "warn",
+        (h.kind === "flood" ? "Flood" : "Closure") + " · " + h.road,
+        h.d + " m away · " + (hazards.fmtAge(h.reported) || "time unknown") +
+        " · " + h.confidence + " confidence");
+  }
+
   if (S.nearJolt) {
     add("info", "Rough road", Math.round(S.nearJolt.d) + " m ahead, logged on an earlier ride");
   }
