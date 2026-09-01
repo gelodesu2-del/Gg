@@ -404,6 +404,32 @@ export function init() {
   });
   $("keys-btn").addEventListener("click", () => { layer("setup"); syncSetup(); });
 
+  /* ---- diagnostics ---- */
+  $("diag-btn").addEventListener("click", () => { renderDiag(); layer("diag"); });
+  $("diag-close").addEventListener("click", () => layer("settings"));
+  $("diag-copy").addEventListener("click", async () => {
+    // innerText rather than textContent: the readout is one <br>-separated
+    // block, and textContent would run every line together.
+    const text = $("diag").innerText || $("diag").textContent || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      toast("Copied");
+    } catch (e) {
+      // A WebView without clipboard permission still has the old path.
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+        toast("Copied");
+      } catch (e2) { toast("Could not copy — read it off the screen"); }
+    }
+  });
+
   /* ---- service editor ---- */
   /* The row's index is its identity: names are editable in principle and
      positions are not, so nothing here is keyed on the label. */

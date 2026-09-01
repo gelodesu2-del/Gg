@@ -192,6 +192,7 @@
         <div class="layer layer-settings" id="layer-settings">
           <div class="ltitle">SETTINGS</div>
           <div class="rows">
+            <div class="srow"><span class="t">Diagnostics<i>What the app can actually see</i></span><button class="pill" id="diag-btn" type="button">Open</button></div>
             <div class="srow"><span class="t">OBD dongle<i id="obd-sub">ELM327 over Bluetooth LE</i></span><button class="pill" id="obd-btn" type="button">Connect</button></div>
             <div class="srow"><span class="t">Calibrate mount<i>Lean zero, north and bracket angle</i></span><button class="pill" id="cal-btn" type="button">Start</button></div>
             <div class="srow"><span class="t">Invert lean<i>If the arc swings the wrong way</i></span><button class="sw" id="inv-sw" type="button" aria-pressed="false"></button></div>
@@ -208,7 +209,6 @@
             <div class="srow"><span class="t">Screen effects<i>Scanlines and glow. Turn off if the dash stutters.</i></span><button class="sw on" id="fx-sw" type="button" aria-pressed="true"></button></div>
             <div class="srow"><span class="t">Keys<i>Maps and Spotify</i></span><button class="pill" id="keys-btn" type="button">Edit</button></div>
 
-            <div class="diag" id="diag">Diagnostics…</div>
 
             <div class="sos">
               <div class="sos-head">
@@ -316,6 +316,18 @@
           <div class="s-foot">
             <button class="crash-btn" id="al-close" type="button">Close</button>
             <button class="crash-btn" id="al-clear" type="button">Clear phone list</button>
+          </div>
+        </div>
+
+        <!-- Its own screen rather than a paragraph at the bottom of a long
+             scroll: this is the first thing to reach for when something is
+             wrong, and it was the hardest thing to find. -->
+        <div class="layer layer-diag" id="layer-diag">
+          <div class="ltitle">DIAGNOSTICS</div>
+          <div class="diag" id="diag">Diagnostics…</div>
+          <div class="s-foot">
+            <button class="crash-btn" id="diag-copy" type="button">Copy</button>
+            <button class="crash-btn" id="diag-close" type="button">Close</button>
           </div>
         </div>
 

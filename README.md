@@ -485,9 +485,16 @@ orientation, the launcher icon — needs a new APK, and those are rare.
 
 ### Troubleshooting
 
-Settings has a **diagnostics** block reporting which font is in use, the map
-state, GPS lock and screen size — everything otherwise invisible on a phone
-with no devtools attached.
+Settings → **Diagnostics** — the first row, because it is the row you want when
+something is wrong. It reports the font actually in use, which map renderer
+came up and which of a Map ID's two styles it asked for, GPS and motion, the
+compass source, the OBD signals the ECU answered, and the screen it is drawing
+on: everything otherwise invisible on a phone with no devtools attached.
+**Copy** puts the whole readout on the clipboard.
+
+It used to be a dim paragraph at the bottom of a long scrolling settings list,
+which is a poor place for the thing you reach for when something has gone
+wrong — nobody found it.
 
 - **Map shows "For development purposes only"** — billing is not enabled on the
   Google Cloud project. The map degrades to a watermarked, unstyled version

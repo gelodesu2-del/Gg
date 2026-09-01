@@ -424,8 +424,12 @@ body{font-family:var(--f-mono); color:var(--ink); -webkit-font-smoothing:antiali
 .sw::after{content:""; position:absolute; top:.2em; left:.2em; width:1.1em; height:1.1em; background:var(--ink-3)}
 .sw.on{border-color:var(--neon); background:rgba(var(--neon-rgb),.12)}
 .sw.on::after{left:auto; right:.2em; background:var(--neon); box-shadow:0 0 .6em var(--neon)}
-.diag{grid-column:1/-1; border:1px solid var(--edge); background:var(--field); padding:.7em .9em; margin-top:.5em;
-  font-size:1.15em; color:var(--ink-3); line-height:1.7; word-break:break-word}
+/* Packs from the top and lets the readout scroll: on a short landscape screen
+   a centred column hides its own ends. */
+.layer-diag{justify-content:flex-start; gap:.8em}
+.layer-diag .diag{overflow-y:auto; margin-top:0}
+.diag{grid-column:1/-1; border:1px solid var(--edge); background:var(--field); padding:.9em 1.1em; margin-top:.5em;
+  font-size:1.35em; color:var(--ink-2); line-height:1.8; word-break:break-word}
 .diag b{color:var(--ink-2); font-weight:400}
 .diag .ok{color:var(--neon)}
 .diag .bad{color:var(--gold)}
