@@ -281,6 +281,21 @@ instead. Pasting one where the other is expected is accepted, saved, and
 ignored — no error, no change. The two styles therefore cannot share a source,
 and this file is the cloud one.
 
+**A Map ID has two styles, and the app has to ask for the right one.** This is
+the step that looks like nothing happening: a style saved as `variant: "dark"`
+is registered as that Map ID's *dark* style, and a map built without a
+`colorScheme` asks for the *light* one — so the style is saved correctly, never
+requested, and the map comes up in Google's default day colours. The app now
+sends `colorScheme` from its own theme: dark themes ask for the dark style,
+light themes ask for the light one. It is a construction-only option, so
+switching between a dark and a light app theme rebuilds the map.
+
+If you use the light themes, associate a second style with the same Map ID
+carrying `{ "variant": "light" }`. Without one, the light themes fall back to
+Google's own light map, which is fine but is not the greyscale.
+
+Diagnostics → **Map mode** names the scheme the live map was built with.
+
 For anything beyond `variant`, use the console's own **Customize** editor and
 then read the JSON back out of the JSON tab: the console generates rules whose
 feature ids are correct by construction, which beats writing them by hand

@@ -24,6 +24,7 @@ let destMarker = null;
 let bikeMarker = null;      // stands in for the centre overlay while browsing
 let markPins = [];
 let onTap = null;
+let lastScheme = null;      // colorScheme the live map was built with
 
 /* The map is greyscale by design and does not follow the theme. Points of
    interest are removed entirely — a dash needs the road network, not
@@ -167,9 +168,19 @@ function init() {
   // makes Google ignore the styles and warn about it.
   // Tilt is what a vector map buys over raster tiles: buildings stand up and
   // the road ahead gets more pixels than the road behind. Raster ignores it.
-  if (vector) { opts.mapId = settings.mapId; opts.heading = 0; opts.tilt = TILT; }
+  if (vector) {
+    opts.mapId = settings.mapId;
+    opts.heading = 0;
+    opts.tilt = TILT;
+    // Without this the map asks the Map ID for its *light* style, which is
+    // why a cloud style saved as variant "dark" appeared to do nothing: it
+    // was saved correctly and never requested. The option is construction
+    // only, which is why a theme flip goes through reinit() below.
+    opts.colorScheme = colorScheme();
+  }
   else { opts.styles = themeStyles(); }
 
+  lastScheme = vector ? opts.colorScheme : null;
   map = new google.maps.Map(document.getElementById("gmap"), opts);
   map.addListener("dragstart", () => {
     follow = false;
@@ -203,7 +214,8 @@ export function renderMode() {
   if (!vector) return "flat — no Map ID set, so the map is raster tiles";
   let tilt = null;
   try { tilt = map.getTilt(); } catch (e) { /* not ready */ }
-  return tilt ? "3D · " + Math.round(tilt) + "° · styled in Cloud console"
+  return tilt ? "3D · " + Math.round(tilt) + "° · " + String(lastScheme || "?").toLowerCase() +
+                " style from Cloud console"
               : "Map ID set but still flat — check vector rendering is on for it";
 }
 
@@ -318,6 +330,23 @@ export function update(now) {
 let dirSvc = null;
 let routeLine = null;
 let routeGlow = null;
+/* Which of a Map ID's two styles to ask for. A dash that is dark asks for the
+   dark one; the light themes ask for the light one, and fall back to Google's
+   own light map when no light style has been associated. */
+function colorScheme() {
+  let light = false;
+  try { light = document.getElementById("app").dataset.mode === "light"; } catch (e) { /* dark */ }
+  const scheme = light ? "LIGHT" : "DARK";
+  // The enum is the documented way in; the string is what it resolves to, and
+  // is the safer thing to send if the core library has not exposed it yet.
+  try {
+    if (window.google && google.maps && google.maps.ColorScheme) {
+      return google.maps.ColorScheme[scheme] || scheme;
+    }
+  } catch (e) { /* fall through to the literal */ }
+  return scheme;
+}
+
 /* Camera pitch on a vector map. 45 is Google's ceiling for a raised-building
    view; anything less and the extrusions barely read at a glance. */
 const TILT = 45;
@@ -466,6 +495,14 @@ export function setDestination(d) {
    cloud console, so only the raster path can follow the theme at runtime. */
 export function restyle() {
   if (map && !vector) map.setOptions({ styles: themeStyles() });
+  // colorScheme cannot be changed on a live map, so a swap between a dark and
+  // a light theme has to rebuild it. Only when it actually changed: rebuilding
+  // on every theme tap would throw the camera away for nothing.
+  if (map && vector) {
+    const want = colorScheme();
+    if (lastScheme !== null && want !== lastScheme) { reinit(); return; }
+    lastScheme = want;
+  }
   if (routeLine) routeLine.setOptions({ strokeColor: accent() });
   if (routeGlow) routeGlow.setOptions({ strokeColor: accent(".22") });
 }
