@@ -253,27 +253,38 @@ Maps key, find Google Maps Platform → *Map management* and create a Map ID:
 repo — the greyscale below is ignored the moment one is set, and Google's
 default is a light map that looks wrong on a dash at night.
 
-The Map Styles console has a **JSON tab**, which means the cloud style does not
-have to be clicked together by hand. `google-map-style.json` in this repo is
-that document, and it is generated from `themeStyles()` in `js/gmap.js` — so
-Google flat and Google 3D render the same map rather than drifting apart. Paste
-it into *Map styles → Create style → JSON*, then associate the style with the
-Map ID.
+The Map Styles console has a **JSON tab**, and `google-map-style.json` in this
+repo is what to paste into it:
 
-Its shape is the cloud format's three keys: `variant` (`"dark"`, which sets the
-whole base map before a single rule runs), `backgroundColor`, and `styles` —
-the same `featureType` / `elementType` / `stylers` rules the inline API takes.
-If the console rejects the `styles` array for any reason, `{"variant": "dark"}`
-on its own is a one-line style that gets most of the way there.
-
-Regenerate after changing the greyscale:
-
+```json
+{ "variant": "dark", "backgroundColor": "#040609" }
 ```
-node -e 'globalThis.document={getElementById:()=>({dataset:{mode:"dark"}})};
-import("./js/gmap.js").then(g=>console.log(JSON.stringify(
-  {variant:"dark",backgroundColor:"#040609",styles:g.themeStyles()},null,2)))' \
-  > google-map-style.json
+
+`variant` is the whole reason this is worth doing — it swaps Google's base map
+to a dark treatment before any rule of yours runs, and the inline styling this
+repo uses for raster tiles has no equivalent. Two keys get the map most of the
+way to matching the dash.
+
+**The cloud format is not the inline format.** This is worth stating plainly
+because the two look alike and the console fails silently on the difference. A
+cloud style rule selects a feature with an `id` — dotted camelCase, like
+`pointOfInterest.recreation.park` — and carries `geometry` and `label` objects:
+
+```json
+{ "id": "road.highway",
+  "geometry": { "fillColor": "#747474" },
+  "label": { "textFillColor": "#a8a8a8" } }
 ```
+
+The inline array in `js/gmap.js` uses `featureType` / `elementType` / `stylers`
+instead. Pasting one where the other is expected is accepted, saved, and
+ignored — no error, no change. The two styles therefore cannot share a source,
+and this file is the cloud one.
+
+For anything beyond `variant`, use the console's own **Customize** editor and
+then read the JSON back out of the JSON tab: the console generates rules whose
+feature ids are correct by construction, which beats writing them by hand
+against a reference.
 
 Settings → diagnostics → **Map mode** reports which renderer actually came up
 and, when 3D was asked for and did not arrive, says so.
