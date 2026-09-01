@@ -506,6 +506,11 @@ export function init() {
   // ---- setup ----
   $("grant-btn").addEventListener("click", async (e) => {
     const btn = e.currentTarget;          // null after the await resolves
+    // The shell only auto-prompts once per install; this button is the
+    // deliberate ask, so it overrides that.
+    try {
+      if (window.NMAXShell && window.NMAXShell.askPermissions) window.NMAXShell.askPermissions();
+    } catch (err) { /* browser tab: the geolocation call below prompts anyway */ }
     const gps = sensors.startGPS();
     const mot = await sensors.startMotion();
     btn.textContent = gps && mot ? "Granted" : gps ? "GPS only" : "Denied";
@@ -777,6 +782,8 @@ function renderDiag() {
         " temp " + (obd.status.pids.temp ? "✓" : "✗") + " fuel " + (obd.status.pids.fuel ? "✓" : "✗") +
         (obd.status.volts ? " · " + obd.status.volts.toFixed(1) + " V" : "")
       : obd.status.state === "idle" ? "not connected" : escapeHtml(obd.status.state)) +
+    "<br><b>Theme</b> " + escapeHtml(settings.theme) + " · " +
+      escapeHtml(document.getElementById("app").dataset.mode || "?") + " mode" +
     "<br><b>Map mode</b> " + (mapview.providerName() !== "google"
       ? "OpenStreetMap — flat by design"
       : escapeHtml(mapview.renderMode() || "loading")) +

@@ -113,6 +113,11 @@ public class MainActivity extends Activity {
         @JavascriptInterface public void headingStop() {
             main.post(new Runnable() { public void run() { stopHeading(); } });
         }
+        /* The setup screen's Grant button, which must ask even after the
+           once-per-install prompt has been spent. */
+        @JavascriptInterface public void askPermissions() {
+            main.post(new Runnable() { public void run() { askForPermissions(true); } });
+        }
         @JavascriptInterface public boolean noteEnabled() { return listenerGranted(); }
         @JavascriptInterface public void noteSettings() {
             main.post(new Runnable() { public void run() { openListenerSettings(); } });
@@ -274,7 +279,10 @@ public class MainActivity extends Activity {
                 // Only the dash gets the rider's position. Any other origin
                 // that finds its way into this WebView is refused.
                 boolean ours = origin != null && origin.startsWith("https://" + SITE);
-                cb.invoke(origin, ours, false);
+                // retain=true. With false the WebView forgets the answer the
+                // moment the page unloads and asks again on every launch,
+                // which is a prompt the rider has to clear before every ride.
+                cb.invoke(origin, ours, true);
             }
         });
 
@@ -337,13 +345,24 @@ public class MainActivity extends Activity {
         holds location would never be asked for the Bluetooth pair the dongle
         needs, and the scan would come back empty with nothing on screen to
         say why. */
-    private void askForPermissions() {
+    private void askForPermissions() { askForPermissions(false); }
+
+    /** @param forced true when the rider asked for the prompt themselves, which
+        overrides the once-per-install rule below. */
+    private void askForPermissions(boolean forced) {
         if (Build.VERSION.SDK_INT < 23) return;
         ArrayList<String> missing = new ArrayList<String>();
         for (String p : wanted()) if (!granted(p)) missing.add(p);
-        if (!missing.isEmpty()) {
-            requestPermissions(missing.toArray(new String[missing.size()]), REQ_PERMS);
-        }
+        if (missing.isEmpty()) return;
+
+        /* Asking on every launch is what a "Only this time" grant turns into:
+           that grant dies with the process, so the dialog is back the next
+           morning and every morning after. Ask once, then leave it to the
+           Grant button on the setup screen — which is a deliberate act rather
+           than an obstacle in front of a rider trying to set off. */
+        if (!forced && getPreferences(MODE_PRIVATE).getBoolean("askedPerms", false)) return;
+        getPreferences(MODE_PRIVATE).edit().putBoolean("askedPerms", true).apply();
+        requestPermissions(missing.toArray(new String[missing.size()]), REQ_PERMS);
     }
 
     private boolean btAllowed() {
