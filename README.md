@@ -251,10 +251,32 @@ Maps key, find Google Maps Platform → *Map management* and create a Map ID:
 
 **Then style it, or it will be bright.** A Map ID takes styling out of this
 repo — the greyscale below is ignored the moment one is set, and Google's
-default is a light map that looks wrong on a dash at night. Create a style in
-*Map styles*, make it dark, and associate it with that Map ID. Settings →
-diagnostics → **Map mode** reports which renderer actually came up and, when
-3D was asked for and did not arrive, says so.
+default is a light map that looks wrong on a dash at night.
+
+The Map Styles console has a **JSON tab**, which means the cloud style does not
+have to be clicked together by hand. `google-map-style.json` in this repo is
+that document, and it is generated from `themeStyles()` in `js/gmap.js` — so
+Google flat and Google 3D render the same map rather than drifting apart. Paste
+it into *Map styles → Create style → JSON*, then associate the style with the
+Map ID.
+
+Its shape is the cloud format's three keys: `variant` (`"dark"`, which sets the
+whole base map before a single rule runs), `backgroundColor`, and `styles` —
+the same `featureType` / `elementType` / `stylers` rules the inline API takes.
+If the console rejects the `styles` array for any reason, `{"variant": "dark"}`
+on its own is a one-line style that gets most of the way there.
+
+Regenerate after changing the greyscale:
+
+```
+node -e 'globalThis.document={getElementById:()=>({dataset:{mode:"dark"}})};
+import("./js/gmap.js").then(g=>console.log(JSON.stringify(
+  {variant:"dark",backgroundColor:"#040609",styles:g.themeStyles()},null,2)))' \
+  > google-map-style.json
+```
+
+Settings → diagnostics → **Map mode** reports which renderer actually came up
+and, when 3D was asked for and did not arrive, says so.
 
 ### The map is grey on purpose
 
